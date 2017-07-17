@@ -1,0 +1,102 @@
+====== Chain of Responsibility 패턴 ======
+===== 문서 개요 =====
+
+  * 디자인 패턴(design pattern)의 구조적 패턴에 속하는 Chain of Responsibility 패턴에 대한 개념을 정리한 문서
+  * Chain of Responsibility 패턴의 특징, 용례 등을 정리한 문서
+
+-----
+
+===== Chain of Responsibility 패턴의 정의 =====
+
+  * define "linked list" functionality in the base class and implement "domain" functionality in derived classesa
+  * Encapsulate the processing elements inside a "pipeline" abstraction
+  * clients have "launch and leave" their requests at the entrance to the pipeline
+  * simplifies object interconnections
+
+===== Chain of Responsibility 패턴이 유용한 상황 =====
+
+  * 한 요청을 두 개 이상의 객체에서 처리하고 싶을때 유용
+  * Do not use Chain of Responsibility when each request is only handled by one handler, or, when the client object knows which service object should handle the request
+
+===== Chain of Responsibility 패턴의 구조 =====
+
+{{:wiki:design_pattern:chain_of_responsibility:chain_of_responsibility_structure.jpg?nolink|}}
+
+===== Chain of Responsibility 패턴 작성 단계 =====
+
+  - The base class maintains a "next" pointer.
+  - Each derived class implements its contribution for handling the request.
+  - If the request needs to be "passed on", then the derived class "calls back" to the base class, which delegates to the "next" pointer.
+  - The client (or some third party) creates and links the chain (which may include a link from the last node to the root node).
+  - The client "launches and leaves" each request with the root of the chain.
+  - Recursive delegation produces the illusion of magic.
+
+===== Chain of Responsibility 패턴의 예시 =====
+
+==== CPP ====
+
+<code cpp>
+#include "iostream"
+#include <stdlib.h>
+using namespace std;
+
+/*
+    define “linked list” functionality in the base class 
+    and implement “domain” functionality in derived classes
+*/
+
+class ChainHandler
+{
+private:
+    class ChainHandler* next;
+    string subject;
+public:
+    ChainHandler(){
+        subject = "";
+    }
+    ChainHandler(string subject){
+        this->subject = subject;
+    }
+    void add(ChainHandler* newcomer){
+        if(next == 0){ next = newcomer; }
+        else{ next->add(newcomer); }
+        return;
+    }
+    void print(){
+        if(subject == ""){
+            cout << "It does not handle anything." << endl;
+        }
+        else{
+            cout << "It handles " << subject << "!" << endl;
+        }
+
+        if(next != 0){
+            next->print();
+        }
+
+        return;
+    }
+};
+
+int main(int argc, char** argv)
+{
+    ChainHandler* my_handler = new ChainHandler();
+    my_handler->add(new ChainHandler("first thing"));
+    my_handler->add(new ChainHandler("second thing"));
+    my_handler->add(new ChainHandler("third thing"));
+    my_handler->add(new ChainHandler("forth thing"));
+
+    my_handler->print();
+    return 0;
+}
+
+/* result
+It does not handle anything.
+It handles first thing!
+It handles second thing!
+It handles third thing!
+It handles forth thing!
+
+*/
+</code>
+

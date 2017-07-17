@@ -1,0 +1,113 @@
+====== State 패턴 ======
+===== 문서 개요 =====
+
+  * 디자인 패턴(design pattern)의 구조적 패턴에 속하는 State 패턴에 대한 개념을 정리한 문서
+  * State 패턴의 특징, 용례 등을 정리한 문서
+
+-----
+
+===== State 패턴의 정의 =====
+
+  * the FiniteStateMachine delegates to the "current" state object, and that state object can set the "next" state object
+  * Allow an object to alter its behavior when its internal state changes
+  * 객체의 내부 상태가 바뀜에 따라 객체의 행동을 바꿀수 있는 패턴
+  * 상태 전환의 제어를 객체 안에서 가질 것인지 객체 밖에 맡길 것인지에 대한 고려가 필요
+
+===== State 패턴이 유용한 상황 =====
+
+  * A monolithic object's behavior is a function of its state, and it must change its behavior at run-time depending on that state
+  * application is characterixed by large and numerous case statements that vector flow of control based on the state of the application.
+
+===== State 패턴의 구조 =====
+
+{{:wiki:design_pattern:state:state_airport.gif?nolink|}}
+
+===== State 패턴 작성 단계 =====
+
+  - Identify an existing class, or create a new class, that will serve as the "state machine" from the client's perspective. That class is the "wrapper" class.
+  - Create a State base class that replicates the methods of the state machine interface. Each method takes one additional parameter: an instance of the wrapper class. The State base class specifies any useful "default" behavior.
+  - Create a State derived class for each domain state. These derived classes only override the methods they need to override.
+  - The wrapper class maintains a "current" State object.
+  - All client requests to the wrapper class are simply delegated to the current State object, and the wrapper object's this pointer is passed.
+  - The State methods change the "current" state in the wrapper object as appropriate.
+
+
+===== State 패턴의 예시 =====
+
+==== CPP ====
+
+<code cpp>
+#include "iostream"
+#include <stdlib.h>
+using namespace std;
+
+/*
+   the FiniteStateMachine delegates to the "current" state object, 
+   and that state object can set the "next" state object
+*/
+
+class CoinThrow
+{
+private:
+    class State* top_bottom;
+public:
+    CoinThrow();
+    void set_state(State* s){
+        top_bottom = s;
+    }
+    string throw_coin();
+};
+
+class State
+{
+public: 
+    virtual string turn_out(CoinThrow*) = 0;
+};
+
+class TOP:public State
+{
+public: 
+    string turn_out(CoinThrow* wrapper);
+};
+
+class BOTTOM:public State
+{
+public: 
+    string turn_out(CoinThrow* wrapper);
+};
+
+CoinThrow::CoinThrow(){
+    top_bottom = new TOP();
+}
+
+string CoinThrow::throw_coin(){
+    srand(time(0));
+    int turn_out_tries = rand()%100;
+    string result;
+    for(;turn_out_tries > 0;turn_out_tries--){
+        result = top_bottom->turn_out(this);
+    }
+    return result;
+}
+
+string TOP::turn_out(CoinThrow* wrapper){
+    wrapper->set_state(new BOTTOM());
+    return "bottom";
+}
+
+string BOTTOM::turn_out(CoinThrow* wrapper){
+    wrapper->set_state(new TOP());
+    return "top";
+}
+
+int main(int argc, char** argv)
+{
+    CoinThrow my_cthrow;
+    cout << "Throw a coin!!" << endl;
+    cout << "The coin fall~" << endl;
+    cout << "The upper side of the coin is " << my_cthrow.throw_coin() << endl;
+    return 0;
+}
+
+</code>
+

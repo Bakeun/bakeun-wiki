@@ -1,0 +1,42 @@
+====== Command 패턴 ======
+===== 문서 개요 =====
+
+  * 디자인 패턴(design pattern)의 구조적 패턴에 속하는 Command 패턴에 대한 개념을 정리한 문서
+  * Command 패턴의 특징, 용례 등을 정리한 문서
+
+-----
+
+===== Command 패턴의 정의 =====
+
+  * 요청을 객체로 감싸 관리하는 패턴
+  * 매개변수를 써서 여러 가지 다른 요구 사항을 집어넣을 수 있음
+  * 요청 내역을 큐에 저장하거나 로그로 기록할 수도 있음
+  * 작업취소 기능도 지원 가능
+  * encapsulate an object, the method to be invoked, and the parameters to be passed behind the method signature "execute"
+  * All clients of Command objects treat each object as a "black box" by simply invoking the object's virtual execute() method whenever the client requires the object's "service".
+  * holds some subset of the following: an object, a method to be applied to the object, and the arguments to be passed when the method is applied
+
+===== Command 패턴이 유용한 상황 =====
+
+  * To decouple the object that invokes the operation from the one that knows how to perform it
+
+===== Command 패턴의 구조 =====
+
+{{:wiki:design_pattern:command:command_structure.jpg?nolink|}}
+
+===== Command 패턴 작성 단계 =====
+
+  - Decide  Command interface with a method signature like execute().
+  - Create one or more derived classes that encapsulate some subset of the following: a "receiver" object, the method to invoke, the arguments to pass.
+  - Instantiate a Command object for each deferred execution request.
+  - Pass the Command object from the creator (aka sender) to the invoker (aka receiver).
+  - The invoker decides when to execute().
+  - if a "little language" offers a justifiable return on investment.
+
+===== Command 패턴의 예시 =====
+
+==== CPP ====
+
+<code cpp>
+</code>
+

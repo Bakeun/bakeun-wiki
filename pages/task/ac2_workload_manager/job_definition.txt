@@ -1,0 +1,73 @@
+====== Job 클래스의 역할 & 구조 설계 ======
+
+===== 문서 개요 =====
+
+  * [[task:ac2_workload_manager:start|AnyCloud 작업 관리 프레임워크 개발 문서]]의 하위 문서
+  * 작업 관리 프레임워크 Jipper의 Job의 역할과 구조를 정의하는 문서
+
+----
+
+===== 용어 정의 =====
+
+  ; forward_operation : 특정 작업을 수행하기 위해 실행해야 하는 함수
+  ; backward_operation : forward_operation이 실패했을 때 실행해야 하는 함수, forward_operation이 수행한 작업을 되돌리는 절차를 포함
+  
+
+----
+
+===== Job 클래스의 역할 =====
+
+  * 특정 작업(job)에 필요한 과정을 기술하고 관련된 정보를 저장하여 모아두는 기능을 주로 함
+  * Job 클래스는 사용자가 정의하고 Queue 관리자가 Job 클래스의 정보를 읽어 알맞은 조치를 취함
+  * forward_operation 이 위치한 좌표((pointer))를 저장하고 조회할 수 있도록 함
+  * backward_operation이 위치한 좌표를 저장하고 조회할 수 있도록 함
+  * operation들((forward_operation & backward_operation))을 호출할 때 전달해야 하는 매개변수들을 보관
+  * 작업이 수행되기 위한 제한 시간을 저장하고 조회할 수 있도록 함
+  * 작업의 상태를 표시(FAILED, SUCCESS, TIMEOUT 등등)
+  * 작업 결과를 보관
+  * 여러 작업들을 연결하기 위해 이전 작업, 다음 작업에 대한 포인터를 저장
+
+===== Job 클래스 구조 ====
+
+==== Job 클래스의 속성 ====
+
+{{  :task:ac2_workload_manager:job_class.png?nolink  |Job 클래스 구조도}}
+
+^  속성명  ^  설명  ^  속성값  ^  비고  ^ flag |
+^job_id| 작업의 식별자 |  1 ~ 99999  | 유일한 값, Queue에 들어갈때 부여받음 | Q, R, I |
+^forward_operation| 작업 수행 함수 |  String(함수명)  | | U |
+^ :::             | :::           |  "NO_OPERATION"  | 수행할 함수 없음(default) | ::: |
+^backward_operation| 작업 취소 함수 |  String(함수명)  | | U |
+^ :::              | :::           |  "NO_OPERATION"  | 수행할 함수 없음(default) | ::: |
+^operation_library|operation library |  String(라이브러리명)  |작업 실행/취소 함수를 포함하는 library((사용자가 지정하지 않으면 Queue에 지정한 library를 사용)) | U, Q |
+| :::             | :::              |  "UNINIT"             |값이 초기화되지 않음 | ::: |
+^arguments|매개변수 |  Hash(({ 변수명 => 값, ... }))  | 작업을 수행/취소할 때 전달 | U |
+| :::     |:::     |  "EMPTY_ARGS"                   | 매개변수가 없을때         | ::: |
+^expired_time|최대 수행 시간 |  scalar  | 단위 second, 기본값 30 | U |
+^state|작업의 상태 |  "RUNNING"   |"작업이 수행중임"| Q, R, I |
+^ ::: |:::        |  "SUCCESS"   |"작업이 성공했음"| ::: |
+^ ::: |:::        |  "FAILED"    |"작업이 실패했음"| :::  |
+^ ::: |:::        |  "CANCELED"  |"작업이 취소됨"| :::  |
+^ ::: |:::        |  "TIMEOUT"   |"작업이 최대 수행 시간동안 완료되지 못했음"| :::  |
+^ ::: |:::        |  "NOLIB"     |"작업의 operation_library가 지정되지 않았음"| :::  |
+^ ::: |:::        |  "NOTYET"    |"작업이 아직 수행되지 않았음"(default) | :::  |
+^job_retrun|작업의 반환값|  Hash      |작업의 반환값을 값의 형태와 함께 보관| Q, I |
+| :::      | :::        |  "UNINIT"  |값이 초기화되지 않음                | :::  |
+^next_job|이전에 수행할 작업|  Job obj. pointer  |                                    | Q |
+| :::    | :::            |  "TAIL"            | 해당 job이 queue의 마지막 job일 경우 | ::: |
+| :::    | :::            |  "UNLINK"          | 연결된 job이 없을 경우               | ::: |
+^prev_job|이후에 수행할 작업|  Job obj. pointer  |                                    | Q |
+| :::    | :::            |  "HEAD"            | 해당 job이 queue의 첫번째 job일 경우 | ::: |
+| :::    | :::            |  "UNLINK"          | 연결된 job이 없을 경우               | ::: |
+
+//flags - R: 필수 U:유저가 정의, Q:큐 관리자가 정의, I:유저가 조회 가능//
+
+==== Job 클래스 속성 간 관계 ====
+
+  * job_id는 사용자가 Job을 Queue에 넣을때 Queue 관리자가 순서대로 부여하고 부여한 job_id는 사용자에게 알려줌
+  * Job이 처음 Queue에 들어갈때 state는 "NOTYET"
+  * operation_library는 User나 Queue 관리자가 설정해야 함
+    * 둘 다 설정하면 User가 설정한 값이 우선으로 들어감
+  * operation_library 값이 없으면 state는 무조건 "NOLIB" 으로 설정
+  * Job이 expired_time에서 설정한 시간 안에 완료되지 않으면 state를 "TIMEOUT"으로 설정
+  * Job을 수행한 결과 성공이면 state를 "SUCCESS"로, 실패이면 state를 "FAILED"로 설정

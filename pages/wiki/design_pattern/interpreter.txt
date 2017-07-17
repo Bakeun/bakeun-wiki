@@ -1,0 +1,149 @@
+====== Interpreter 패턴 ======
+===== 문서 개요 =====
+
+  * 디자인 패턴(design pattern)의 구조적 패턴에 속하는 Interpreter 패턴에 대한 개념을 정리한 문서
+  * Interpreter 패턴의 특징, 용례 등을 정리한 문서
+
+-----
+
+===== Interpreter 패턴의 정의 =====
+
+  * 컬랙션 내에 있는 모든 객체에 대해 반복 작업을 처리하는 패턴
+  * map a domain to a language, the language to a recursive grammar, and the grammar to the Composite pattern
+
+===== Interpreter 패턴이 유용한 상황 =====
+
+  * If the domain were characterized with a "language", then problems could be easily solved with an interpretation "engine".
+
+===== Interpreter 패턴의 구조 =====
+
+{{:wiki:design_pattern:interpreter:interpreter_structure.jpg?nolink|}}
+
+===== Interpreter 패턴 작성 단계 =====
+
+  - Decide if a "little language" offers a justifiable return on investment.
+  - Define a grammar for the language.
+  - Map each production in the grammar to a class.
+  - Organize the suite of classes into the structure of the Composite pattern.
+  - Define an interpret(Context) method in the Composite hierarchy.
+  - The Context object encapsulates the current state of the input and output as the former is parsed and the latter is accumulated. It is manipulated by each grammar class as the "interpreting" process transforms the input into the output.
+
+===== Interpreter 패턴의 예시 =====
+
+==== CPP ====
+
+<code cpp>
+#include <iostream>
+#include <stdlib.h>
+#include <string>
+#include <sstream>
+using namespace std;
+
+/*
+   map a domain to a language, 
+   the language to a recursive grammar,
+   and the grammar to the Composite pattern
+*/
+
+
+class Operand
+{
+public:
+    virtual int interpret() = 0;
+};
+
+class Expression:public Operand
+{
+private:
+    char m_operator;
+    Operand* left;
+    Operand* right;
+public:
+    Expression( char op ){ m_operator = op; }
+    Expression( Operand* left, Operand* right ){
+        this->left  = left;
+        this->right = right;
+    }
+    Expression( char op, Operand* left, Operand* right ){
+        m_operator = op;
+        this->left  = left;
+        this->right = right;
+    }
+    int interpret(){
+        if(m_operator == '+'){
+            return left->interpret() + right->interpret();
+        }
+        if(m_operator == '-'){
+            return left->interpret() - right->interpret();
+        }
+        else{ return 0; }
+    }
+};
+
+class Number:public Operand
+{
+private:
+    int value;
+public:
+    Number(int value){ this->value = value; }
+    Number(string value){ this->value = std::stoi(value); }
+    int interpret(){
+        return value;
+    }
+};
+
+
+class Parser
+{
+private:
+    string opers;
+    string* parsed_expr;
+    int parsed_index;
+    int parse_maximum;
+    bool is_operation(string token){
+        return !(opers.find_first_of(token));
+    };
+public:
+    Parser(){
+        parse_maximum = 10;
+        parsed_index = 0;
+        opers = "+-";
+        parsed_expr = new string[parse_maximum];
+    };
+    ~Parser(){
+        delete [] parsed_expr;
+    }
+
+    int operate(string expr){
+        cout << "make_split_expr: " << expr << endl;
+        int op_position = expr.find_first_of("+|-");
+        char oper = expr[op_position];
+        Number* left = new Number(expr.substr(0,op_position));
+        
+        string right_str = expr.substr(op_position+1);
+        int right_int;
+        Operand* right;
+        if(right_str.find_first_of("+|-") != -1){
+            right_int = operate(right_str);
+        }
+
+        if(right_str.find_first_of("+|-") != -1){
+            right = new Number(right_int);
+        }else{
+            right = new Number(right_str);
+        }
+
+        Expression* result = new Expression(oper, left, right);
+        
+        return result->interpret();
+    }
+};
+
+
+int main(int argc, char** argv){
+    Parser my_parse;
+    cout << my_parse.operate("12+3+5-2") << endl;
+    return 1;
+}
+</code>
+

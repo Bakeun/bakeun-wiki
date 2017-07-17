@@ -1,0 +1,298 @@
+====== Decorator 패턴 ======
+===== 문서 개요 =====
+
+  * 디자인 패턴(design pattern)의 구조적 패턴에 속하는 Decorator 패턴에 대한 개념을 정리한 문서
+  * Decorator 패턴의 특징, 용례 등을 정리한 문서
+
+-----
+
+===== Decorator 패턴의 정의 =====
+
+  * contains a single base Component, which could be a derived ConcreteComponent or another derived Decorator
+  * 프로그램 동작 중에 상황에 따라 새로운 역할을 추가할 수 있도록 하는 코딩 패턴
+  * Decorator는 한 객체에도 여러 개가 존재할 수 있음
+
+===== Decorator 패턴이 유용한 상황 =====
+
+  * 서브클래스를 만드는 것을 통해서 기능을 유연하게 확장할 수 있는 방법을 제공해야 할 때
+  * 인터페이스는 바꾸지 않고 인터페이스의 동작만 변경해야 할 때
+
+===== Decorator 패턴의 구조 =====
+
+{{:wiki:design_pattern:decorator:decorator_structure.jpg?nolink|}}
+
+===== Decorator 패턴 작성 단계 =====
+
+  - Ensure the context is: a single core (or non-optional) component, several optional embellishments or wrappers, and an interface that is common to all.
+  - Create a "Lowest Common Denominator" interface that makes all classes interchangeable.
+  - Create a second level base class (Decorator) to support the optional wrapper classes.
+  - The Core class and Decorator class inherit from the LCD interface.
+  - The Decorator class declares a composition relationship to the LCD interface, and this data member is initialized in its constructor.
+  - The Decorator class delegates to the LCD object.
+  - Define a Decorator derived class for each optional embellishment.
+  - Decorator derived classes implement their wrapper functionality - and - delegate to the Decorator base class.
+  - The client configures the type and ordering of Core and Decorator objects.
+
+===== Decorator 패턴의 예시 =====
+
+==== CPP ====
+
+<code cpp>
+#include "iostream"
+#include <stdlib.h>
+using namespace std;
+
+/* 
+    Decorator contains a single base Component, 
+	which could be a derived ConcreteComponent 
+	or another derived Decorator
+*/
+
+class Decoration
+{
+public:
+	virtual ~Decoration(){ };
+	virtual void adapt_decoration() = 0;
+};
+
+class Human:public Decoration
+{
+private:
+	string name;
+public:
+	Human(string name){ this->name = name; }
+	~Human(){ cout << "bye bye~!" << endl; }
+	void adapt_decoration(){ cout << name << ": Let's prepare to go out~" << endl; }
+};
+
+class Wearable:public Decoration
+{
+private:
+	Decoration* deco;
+public:
+	~Wearable(){ delete deco; }
+    Wearable(Decoration* deco){ this->deco = deco; }
+	void adapt_decoration(){ this->deco->adapt_decoration(); }
+};
+
+class Hat:public Wearable
+{
+public:
+	~Hat(){ cout << "delete hat" << endl; }
+	Hat(Decoration* deco):Wearable(deco){ }
+	void adapt_decoration(){
+		Wearable::adapt_decoration();
+		cout << "    ------    " << endl;
+		cout << "   |      |   " << endl;
+		cout << " ------------ " << endl;
+	}
+};
+
+class Bare:public Wearable
+{
+public:
+	~Bare(){ cout << "delete bare" << endl; }
+	Bare(Decoration* deco):Wearable(deco){ }
+	void adapt_decoration(){
+		Wearable::adapt_decoration();
+		cout << "              " << endl;
+		cout << "   --------   " << endl;
+		cout << "  |        |  " << endl;
+	}
+};
+
+class Smile:public Wearable
+{
+public:
+	~Smile(){ cout << "delete smile" << endl; }
+	Smile(Decoration* deco):Wearable(deco){ }
+	void adapt_decoration(){
+		Wearable::adapt_decoration();
+		cout << "  |  ^  ^  |  " << endl;
+		cout << "   |  ..  |   " << endl;
+		cout << "    ------    " << endl;
+	}
+};
+
+class Curt:public Wearable
+{
+public:
+	~Curt(){ cout << "delete curt" << endl; }
+	Curt(Decoration* deco):Wearable(deco){ }
+	void adapt_decoration(){
+		Wearable::adapt_decoration();
+		cout << "  |  -  -  |  " << endl;
+		cout << "   |  ..  |   " << endl;
+		cout << "    ------    " << endl;
+	}
+};
+
+int main(int argc, char** argv)
+{
+	Decoration* Bakeun = new Smile(new Hat(new Human("Bakeun")));
+	Decoration* Jun = new Curt(new Bare(new Human("Junny")));
+	Decoration* Beom = new Smile(new Bare(new Human("Beomy")));
+	Decoration* Hyeon = new Curt(new Hat(new Human("Hyeon")));
+
+	Bakeun->adapt_decoration();
+	cout << "Let's go home~" << endl;
+	delete Bakeun;
+	cout << endl;
+
+	Jun->adapt_decoration();
+	cout << "I go home.." << endl;
+	delete Jun;
+	cout << endl;
+
+	Beom->adapt_decoration();
+	cout << "Let's go home~" << endl;
+	delete Beom;
+	cout << endl;
+
+	Hyeon->adapt_decoration();
+	cout << "I go home.." << endl;
+	delete Hyeon;
+	cout << endl;
+
+    return 0;
+}
+
+/* result
+Bakeun: Let's prepare to go out~
+    ------
+   |      |
+ ------------
+  |  ^  ^  |
+   |  ..  |
+    ------
+Let's go home~
+delete smile
+delete hat
+bye bye~!
+
+Junny: Let's prepare to go out~
+
+   --------
+  |        |
+  |  -  -  |
+   |  ..  |
+    ------
+I go home..
+delete curt
+delete bare
+bye bye~!
+
+Beomy: Let's prepare to go out~
+
+   --------
+  |        |
+  |  ^  ^  |
+   |  ..  |
+    ------
+Let's go home~
+delete smile
+delete bare
+bye bye~!
+
+Hyeon: Let's prepare to go out~
+    ------
+   |      |
+ ------------
+  |  -  -  |
+   |  ..  |
+    ------
+I go home..
+delete curt
+delete hat
+bye bye~!
+
+*/
+
+</code>
+
+==== PHP ====
+
+<code php>
+<?php
+class HtmlLinks {
+    //some methods which is available to all html links
+}
+ 
+class LogoutLink extends HtmlLinks {
+    protected $_html;
+     
+    public function __construct() {
+        $this->_html = "<a href=\"logout.php\">Logout</a>";
+    }
+     
+    public function setHtml($html)
+    {
+        $this->_html = $html;
+    }
+     
+    public function render()
+    {
+        echo $this->_html;
+    }
+}
+ 
+class LogoutLinkH2Decorator extends HtmlLinks {
+    protected $_logout_link;
+     
+    public function __construct( $logout_link )
+    {
+        $this->_logout_link = $logout_link;
+        $this->setHtml("<h2>" . $this->_html . "</h2>");
+    }
+     
+    public function __call( $name, $args )
+    {
+        $this->_logout_link->$name($args[0]);
+    }
+}
+ 
+class LogoutLinkUnderlineDecorator extends HtmlLinks {
+    protected $_logout_link;
+     
+    public function __construct( $logout_link )
+    {
+        $this->_logout_link = $logout_link;
+        $this->setHtml("<u>" . $this->_html . "</u>");
+    }
+     
+    public function __call( $name, $args )
+    {
+        $this->_logout_link->$name($args[0]);
+    }
+}
+ 
+class LogoutLinkStrongDecorator extends HtmlLinks {
+    protected $_logout_link;
+     
+    public function __construct( $logout_link )
+    {
+        $this->_logout_link = $logout_link;
+        $this->setHtml("<strong>" . $this->_html . "</strong>");
+    }
+     
+    public function __call( $name, $args )
+    {
+        $this->_logout_link->$name($args[0]);
+    }
+}
+
+//용례
+$logout_link = new LogoutLink();
+ 
+if( $is_logged_in ) {
+    $logout_link = new LogoutLinkStrongDecorator($logout_link);
+}
+ 
+if( $in_home_page ) {
+    $logout_link = new LogoutLinkH2Decorator($logout_link);
+} else {
+    $logout_link = new LogoutLinkUnderlineDecorator($logout_link);
+}
+$logout_link->render();
+</code>
+

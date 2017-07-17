@@ -1,0 +1,129 @@
+====== Factory Method 패턴 ======
+===== 문서 개요 =====
+
+  * 디자인 패턴(design pattern)의 구조적 패턴에 속하는 Factory Method 패턴에 대한 개념을 정리한 문서
+  * Factory Method 패턴의 특징, 용례 등을 정리한 문서
+
+-----
+
+===== Factory Method 패턴의 정의 =====
+
+  * define "createInstance" placeholder in the base class, each derived class calls the "new" operator and returns an instance of itself
+  * 만드려는 객체의 정보를 입력받아 알맞은 객체를 선택하여 만들어 주는 것이 주요 목적
+  * 객체를 생성하기 위한 인터페이스를 정의
+  * 어떤 클래스의 인스턴스를 만들지는 서브클래스에서 결정하게 함
+  * 클래스의 인스턴스를 만드는 일을 서브클래스에 맡김
+  * Factory Method is to creating objects as Template Method is to implementing an algorithm. A superclass specifies all standard and generic behavior (using pure virtual "placeholders" for creation steps), and then delegates the creation details to subclasses that are supplied by the client.
+  * Factory Method makes a design more customizable and only a little more complicated. Other design patterns require new classes, whereas Factory Method only requires a new operation.
+
+===== Factory Method 패턴이 유용한 상황 =====
+
+  * 어떤 클래스가 자신이 생성해야 하는 객체의 클래스를 예측할 수 없을 때
+  * 클라이언트가 객체를 생성하는데 유연한 확장성이 필요할 때
+  * A framework needs to standardize the architectural model for a range of applications, but allow for individual applications to define their own domain objects and provide for their instantiation.
+  * People often use Factory Method as the standard way to create objects; but it isn't necessary if: the class that's instantiated never changes, or instantiation takes place in an operation that subclasses can easily override (such as an initialization operation). 
+
+===== Factory Method 패턴의 구조 =====
+
+{{:wiki:design_pattern:factory_method:factory_method_structure.jpg?nolink|}}
+
+===== Factory Method 패턴 작성 단계 =====
+
+  - If you have an inheritance hierarchy that exercises polymorphism, consider adding a polymorphic creation capability by defining a static factory method in the base class.
+  - Design the arguments to the factory method. What qualities or characteristics are necessary and sufficient to identify the correct derived class to instantiate?
+  - Consider designing an internal "object pool" that will allow objects to be reused instead of created from scratch.
+  - Consider making all constructors private or protected.
+
+===== Factory Method 패턴의 예시 =====
+
+==== CPP ====
+
+<code cpp>
+#include "iostream"
+#include <stdlib.h>
+using namespace std;
+
+/*
+   define “createInstance” placeholder in the base class, 
+   each derived class calls the “new” operator
+   and returns an instance of itself
+*/
+
+class Mixer{
+public:
+    static Mixer* mix_fruits(int input);
+    virtual string what_juice_i_am() = 0;
+};
+
+class AppleJuice:public Mixer{
+public:
+    string what_juice_i_am(){ return "Apple juice"; }
+};
+
+class TomatoJuice:public Mixer{
+public:
+    string what_juice_i_am(){ return "Tomato juice"; }
+};
+
+class PotatoJuice:public Mixer{
+public:
+    string what_juice_i_am(){ return "Potato juice"; }
+};
+
+class UncannyJuice:public Mixer{
+public:
+    string what_juice_i_am(){ return "Uncanny juice.."; }
+};
+
+Mixer* Mixer::mix_fruits(int input)
+{
+    if(input == 1)
+    { return new AppleJuice; }
+    else if(input == 2)
+    { return new TomatoJuice; }
+    else if(input == 3)
+    { return new PotatoJuice; }
+    else{ return new UncannyJuice; }
+}
+
+int main(int argc, char** argv)
+{
+    cout << "select fruit 1)Apple, 2)Tomato, 3)Potato\n";
+    int choice;
+    cin >> choice;
+
+    Mixer* my_juice;
+    my_juice = Mixer::mix_fruits(choice);
+    cout << "TaDa~! Here is your " << my_juice->what_juice_i_am() << endl;
+    return 1;
+}
+
+
+</code>
+
+==== PHP ====
+
+<code php>
+<?php
+class ButtonFactory
+{
+    public static function createButton($type)
+    {
+        $baseClass = 'Button';
+        $targetClass = ucfirst($type).$baseClass;
+  
+        if (class_exists($targetClass) && is_subclass_of($targetClass, $baseClass)) {
+            return new $targetClass;
+        } else {
+            throw new Exception("The button type '$type' is not recognized.");
+        }
+    }
+}
+
+//용례
+$buttons = array('image','input','flash');
+foreach($buttons as $b) {
+    echo ButtonFactory::createButton($b)->getHtml()
+}
+</code>
+

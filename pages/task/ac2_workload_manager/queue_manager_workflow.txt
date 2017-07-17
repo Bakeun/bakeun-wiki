@@ -1,0 +1,96 @@
+====== Queue manager의 작업 흐름도 설계 ======
+
+===== 문서 개요 =====
+
+  * [[task:ac2_workload_manager:start|AnyCloud 작업 관리 프레임워크 개발 문서]]의 하위 문서
+  * 작업 관리 프레임워크 Jipper의 Queue 관리자가 동작하는 흐름을 정의하는 문서
+  * 동작 흐름에 사용될 Job 객체 구조는 [[task:ac2_workload_manager:job_definition|여기]], Queue 객체 구조는 [[task:ac2_workload_manager:queue_manager_definition|여기]]를 참고
+
+===== 용어 정의 =====
+
+===== Job 생성 =====
+
+  - Job 객체 생성
+  - 새로운 job_id 부여
+  - Job 객체 속성값 초기화
+    * forward_operation = "NO_OPERATION" or 사용자 입력값
+    * backward_operation = "NO_OPERATION" or 사용자 입력값
+    * arguments = "EMPTY_ARGS" or 사용자 입력값
+    * operation_library = "UNINIT" or 사용자 입력값
+    * expired_time = 30 or 사용자 입력값
+    * job_return = "UNINIT"
+    * next_job = "UNLINK"
+    * prev_job = "UNLINK"
+    * state = "NOTYET"
+  - Job 객체의 상태 체크 & state 속성 초기화
+    * operation_library가 "UNINIT"이면 state 값을 "NOLIB"으로 변경
+
+===== Queue Manager 생성 =====
+
+  - QueueManager 객체 생성
+  - queue_id 값을 1로 설정
+  - QueueManager 객체 속성값 초기화
+    * job_number = 0
+    * operation_direction = "FORWARD"
+    * queue_library = "UNINIT" or 사용자 입력값
+    * state = "EMPTY"
+    * queue_return = "UNINIT"
+    * job_queue = "UNINIT"
+    * running_job = "QUEUE_NOT_RUNNING"
+    * last_job = "UNINIT"
+===== 새로운 Job을 QueueManager에 등록(enqueue) =====
+
+  - QueueManager->{state}가 "EMPTY"나 "READY"이면 계속 진행
+  - QueueManager에 등록할 Job 객체를 입력받음
+  - 입력받은 Job 객체를 다음과 같이 수정
+    * Job->{operation_library}가 "UNINIT"이면 QueueManager->{queue_library}의 값으로 교체
+      * 교체된 Job->{operation_library} 값이 "UNINIT"이 아니면 Job->{state}를 "NOTYET"으로 변경
+    * Job->{next_job} 값을 "TAIL"으로 설정
+  - QueueManager->{state}를 확인
+    * state == "EMPTY"
+      - 새로운 Job의 prev_job을 "HEAD"로 지정
+      - QueueManager->{job_queue}와 QueueManager->{last_job}을 입력받은 Job 객체의 주소로 변경
+      - QueueManager->{state}를 "READY"로 변경
+    * state == "READY"
+      - QueueManager->{last_job}->{next_job}을 입력받은 Job 객체의 주소로 교체
+      - 입력받은 Job 객체의 prev_job 값을 QueueManager->{last_job}의 값으로 교체 
+      - QueueManager->{last_job} 값을 입력받은 Job 객체의 주소로 교체
+
+===== QueueManager의 Job을 실행(running) =====
+
+  - QueueManager->{state}를 확인하여 state가 "READY" 이면 state를 "RUNNING"으로 설정하고 계속 진행
+  - QueueManager->{context}를 빈 해쉬값으로 초기화
+  - QueueManager->{running_job}(이하 running_job으로 표기)의 값을 QueueManager->{job_queue}의 값으로 교체
+  -  다음 과정을 반복
+    - running_job->{state}가 "NOLIB"이면 다음을 실행
+      - QueueManager->{operation_direction}을 "BACKWARD"로 설정
+      - running_job->{prev_job}을 확인
+        * 값이 "HEAD" 이면 과정 종료
+        * 그렇지 않으면 running_job = running_job->{prev_job}으로 설정하고 과정을 처음부터 다시 시작
+    - running_job->{operation_library}를 불러옴(''require'')
+    - running_job->{operation_direction}을 확인
+      * operation_direction == "FORWARD"
+        - running_job->{arguments}와 QueueManager->{context}의 주소를 input으로 하여 running_job->{forward_operation}을 수행
+        - running_job->{forward_operation}의 return을 runnig_job->{job_return}{forward}에 넣고 그 내용을 정리하여 Queue->{queue_return}에도 넣음
+        - running_job->{forward_operation}의 결과에 맞게 running_job->{state} 값을 변경
+          * 작업이 "NO_OPERATION" 일때: running_job->{state} = "SUCCESS"
+          * 작업이 성공했을때: running_job->{state} = "SUCCESS"
+          * 작업이 실패했을때: running_job->{state} = "FAILED"
+          * 작업 시간이 최대 수행시간을 초과 했을때: running_job->{state} = "TIMEOUT"
+        - running_job->{forward_operation}이 실패하면 QueueManager->{operation_direction}을 "BACKWARD"로 설정하고 과정을 처음부터 다시 시작
+      * opertaion_direction == "BACKWARD"
+        - running_job->{arguments}와 QueueManager->{context}의 주소를 input으로 하여 running_job->{backward_operation}을 수행
+        - running_job->{backward_operation}의 return을 runnig_job->{job_return}{backward}에 넣고  그 내용을 정리하여 QueueManager->{queue_return}에도 넣음
+        - running_job->{backward_operation}의 결과에 맞게 running_job->{state} 값을 변경
+          * 작업이 "NO_OPERATION" 일때: running_job->{state} .= ", CANCELED"
+          * 작업이 성공했을때: running_job->{state} .= ", CANCELED"
+          * 작업이 실패했을때: running_job->{state} .= ", FAILED"
+    - running_job->{operation_direction}을 다시 확인
+      * operation_direction == "FORWARD"
+        - running_job->{next_job}이 "TAIL" 이면 과정 종료
+        - 그렇지 않으면 running_job = running_job->{next_job}
+      * opertaion_direction == "BACKWARD"
+        - running_job->{prev_job}이 "HEAD" 이면 과정 종료
+        - 그렇지 않으면 running_job = running_job->{prev_job}
+  - QueueManager->{state}를 "READY"로 변경
+  - QueueManager->{queue_return} 메시지를 사용자에게 전달하고 동작 종료

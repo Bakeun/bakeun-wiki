@@ -1,0 +1,210 @@
+====== Observer 패턴 ======
+===== 문서 개요 =====
+
+  * 디자인 패턴(design pattern)의 구조적 패턴에 속하는 Observer 패턴에 대한 개념을 정리한 문서
+  * Observer 패턴의 특징, 용례 등을 정리한 문서
+
+-----
+
+===== Observer 패턴의 정의 =====
+
+  * the "model" broadcasts to many possible "views", and each "view" can dialog with the "model"
+  * Two models
+    * Pull: Whenever the Subject changes, it broadcasts to all registered Observers that it has changed, and each Observer queries the Subject for that subset of the Subject's state that it is responsible for monitoring
+    * Push: each Observer is responsible for "pulling" its particular "window of interest" from the Subject
+    * The "push" model compromises reuse, while the "pull" model is less efficient
+  * 상태가 변경되면 다른 객체들에게 알림을 발생하는 패턴
+  * 한 객체의 상태가 바뀌면 그 객체에 의존하는 다른 객체들한테 연락이 가고 자동으로 내용이 갱신되는 방식으로 일대다 의존성을 정의함
+  * Observable & Observer
+    * Observable 에 register, remove, notify 가 있음. notify로 Observer의 update를 호출함
+    * Observer에 update가 있음
+
+===== Observer 패턴이 유용한 상황 =====
+
+
+===== Observer 패턴의 구조 =====
+
+{{:wiki:design_pattern:observer:observer_structure.jpg?nolink|}}
+
+===== Observer 패턴 작성 단계 =====
+
+  - Differentiate between the core (or independent) functionality and the optional (or dependent) functionality.
+  - Model the independent functionality with a "subject" abstraction.
+  - Model the dependent functionality with an "observer" hierarchy.
+  - The Subject is coupled only to the Observer base class.
+  - The client configures the number and type of Observers.
+  - Observers register themselves with the Subject.
+  - The Subject broadcasts events to all registered Observers.
+  - The Subject may "push" information at the Observers, or, the Observers may "pull" the information they need from the Subject.
+
+===== Observer 패턴의 예시 =====
+
+==== CPP ====
+
+<code cpp>
+#include "iostream"
+#include <stdlib.h>
+using namespace std;
+
+/*
+   the “model” broadcasts to many possible “views”, 
+   and each “view” can dialog with the “model”
+*/
+
+class Observer
+{
+public:
+    virtual void update(double) = 0;
+};
+
+class Subject
+{
+public:
+    virtual void attach(Observer*) = 0;
+    virtual void notify() = 0;
+};
+
+class Thermometer : public Subject
+{
+private:
+    double temperature;
+    int view_size;
+    int new_index;
+    Observer** viewers;
+public:
+    Thermometer(){
+        temperature = 18.5;
+        view_size = 5;
+        new_index = 0;
+        viewers = new Observer*[view_size];
+    }
+    ~Thermometer(){
+        delete [] viewers;
+    }
+    void attach(Observer* obs){
+        if(new_index >= view_size){ return; }
+        viewers[new_index++] = obs;
+    }
+    void notify(){
+        for(int i = 0; i < view_size; i++){
+            Observer* each_viewer = viewers[i];
+            if(each_viewer == 0){ continue; }
+            each_viewer->update(temperature);
+        }
+    }
+    void winter_season(){
+        cout << "~~ It becomes winter ~~" << endl;
+        temperature = -3;
+        this->notify();
+    }
+    void autumn_season(){
+        cout << "~~ It becomes autumn ~~" << endl;
+        temperature = 6.3;
+        this->notify();
+    }
+    void spring_season(){
+        cout << "~~ It becomes spring ~~" << endl;
+        temperature = 8.6;
+        this->notify();
+    }
+    void summer_season(){
+        cout << "~~ It becomes summer ~~" << endl;
+        temperature = 26.1;
+        this->notify();
+    }
+};
+
+class Korean : public Observer
+{
+private:
+    string name;
+    double temper;
+public:
+    Korean(Subject* thermo){
+        thermo->attach(this);
+        this->name = "A korean";
+    }
+    Korean(Subject* thermo, string name){
+        thermo->attach(this);
+        this->name = name;
+    }
+    void update(double value){
+        temper = value;
+    }
+    void view_thermo(){
+        cout << name << ": Oh~! It's " << temper << " Celsius!" << endl;
+    }
+};
+
+class English : public Observer
+{
+private:
+    string name;
+    double temper;
+public:
+    English(Subject* thermo){
+        thermo->attach(this);
+        this->name = "A english";
+    }
+    English(Subject* thermo, string name){
+        thermo->attach(this);
+        this->name = name;
+    }
+    void update(double value){
+        temper = 1.8 * value + 32 ;
+    }
+    void view_thermo(){
+        cout << name << ": AhHa, It's " << temper << " Fahrenheit." << endl;
+    }
+};
+
+int main(int argc, char** argv)
+{
+    Thermometer* my_thermo = new Thermometer();
+    Korean*  bakeun = new Korean(my_thermo, "Bakeun");
+    English* frank = new English(my_thermo);
+
+    my_thermo->notify();
+    bakeun->view_thermo();
+    frank->view_thermo();
+
+    my_thermo->spring_season();
+    bakeun->view_thermo();
+    frank->view_thermo();
+
+    my_thermo->summer_season();
+    bakeun->view_thermo();
+    frank->view_thermo();
+
+    my_thermo->autumn_season();
+    bakeun->view_thermo();
+    frank->view_thermo();
+
+    my_thermo->winter_season();
+    bakeun->view_thermo();
+    frank->view_thermo();
+
+    return 0;
+}
+
+/*
+Result
+
+Bakeun: Oh~! It's 18.5 Celsius!
+A english: AhHa, It's 65.3 Fahrenheit.
+~~ It becomes spring ~~
+Bakeun: Oh~! It's 8.6 Celsius!
+A english: AhHa, It's 47.48 Fahrenheit.
+~~ It becomes summer ~~
+Bakeun: Oh~! It's 26.1 Celsius!
+A english: AhHa, It's 78.98 Fahrenheit.
+~~ It becomes autumn ~~
+Bakeun: Oh~! It's 6.3 Celsius!
+A english: AhHa, It's 43.34 Fahrenheit.
+~~ It becomes winter ~~
+Bakeun: Oh~! It's -3 Celsius!
+A english: AhHa, It's 26.6 Fahrenheit.
+
+*/
+</code>
+

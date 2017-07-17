@@ -1,0 +1,134 @@
+====== [Jipper] User가 전달한 package를 library로 등록하는 방안 모색 ======
+===== 문서 개요 =====
+
+  * [[task:ac2_workload_manager:start|AnyCloud 작업 관리 프레임워크 개발 문서]]의 하위 문서
+  * 작업 관리 프레임워크 Jipper가 Job을 수행할 때 사용자로부터 library를 받아와 등록하는 방안에 대해 조사하고 그 내용을 정리하는 문서
+  * 조사하는 김에 context 전달 방법도 같이 조사하여 정리함
+
+----
+
+===== 사용 라이브러리 =====
+
+  * 없음
+
+===== 테스트 내용 =====
+
+==== 테스트 코드 ====
+
+  * ''Client.pm'' <code perl>
+  1 #!/usr/bin/env perl
+  2 package Client;
+  3
+  4 use strict;
+  5 use warnings;
+  6 use Job;
+  7
+  8 my $my_job = Job->new();
+  9 $my_job->register_lib("Functions");
+ 10 $my_job->run("my_print", 'aa');
+ 11 $my_job->run("my_print", 'bb');
+ 12 $my_job->run("my_print", 'cc');
+ 13
+ 14 1;
+</code>
+
+  * ''Job.pm'' <code perl>
+  1 #!/usr/bin/env perl
+  2 package Job;
+  3
+  4 use strict;
+  5 use warnings;
+  6 use Moose;
+  7 use Data::Dumper;
+  8
+  9 sub new
+ 10 {
+ 11     my $class = shift;
+ 12     my $self = {
+ 13         library => 'UNINIT',
+ 14         context => {},
+ 15     };
+ 16     bless($self,$class);
+ 17
+ 18     return $self;
+ 19 }
+ 20
+ 21 sub register_lib{
+ 22     my $self = shift;
+ 23     my $input = shift;
+ 24
+ 25     $self->{library} = $input;
+ 26 }
+ 27
+ 28 sub run{
+ 29     my $self = shift;
+ 30     my $func = shift;
+ 31     my $input = shift;
+ 32
+ 33     my $ctx = $self->{context};
+ 34     eval "require $self->{library}";
+ 35     print "========================================================\n";
+ 36     print "Call \"$self->{library}::$func($input)\"\n";
+ 37     my $job_return = eval("$self->{library}::$func(\$input, \$self->{context})");
+ 38     print "\tjob_return: $job_return\n";
+ 39     print "\tcontext after \"$func($input)\": ".Dumper $self->{context};
+ 40     print "========================================================\n";
+ 41 }
+ 42
+ 43 1;
+</code>
+
+  * ''Functions.pm'' <code perl>
+  1 #!/usr/bin/env perl
+  2 package Functions;
+  3
+  4 use strict;
+  5 use warnings;
+  6 use Moose;
+  7 use Data::Dumper;
+  8
+  9 sub my_print{
+ 10     my $input = shift;
+ 11     my $ctx = shift;
+ 12
+ 13     $ctx->{$input} = 1;
+ 14     print "\texecute my_print, argument: $input\n";
+ 15     return "return_of_my_print";
+ 16 }
+ 17
+ 18 1;
+</code>
+
+==== 테스트 결과 ====
+
+  * ''perl Client.pm''<code>
+[root@gcluster-1 library_deliver]# perl Client.pm
+========================================================
+Call "Functions::my_print(aa)"
+        execute my_print, argument: aa
+        job_return: return_of_my_print
+        context after "my_print(aa)": $VAR1 = {
+          'aa' => 1
+        };
+========================================================
+========================================================
+Call "Functions::my_print(bb)"
+        execute my_print, argument: bb
+        job_return: return_of_my_print
+        context after "my_print(bb)": $VAR1 = {
+          'bb' => 1,
+          'aa' => 1
+        };
+========================================================
+========================================================
+Call "Functions::my_print(cc)"
+        execute my_print, argument: cc
+        job_return: return_of_my_print
+        context after "my_print(cc)": $VAR1 = {
+          'cc' => 1,
+          'bb' => 1,
+          'aa' => 1
+        };
+========================================================
+
+</code>

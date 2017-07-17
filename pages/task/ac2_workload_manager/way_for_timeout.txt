@@ -1,0 +1,60 @@
+====== [Jipper] 입력받은 Job 객체의 timeout 처리 방안 모색 ======
+===== 문서 개요 =====
+
+  * [[task:ac2_workload_manager:start|AnyCloud 작업 관리 프레임워크 개발 문서]]의 하위 문서
+  * 작업 관리 프레임워크 Jipper가 Job을 수행할 때, timeout을 처리하는 방안에 대해 조사하고 그 내용을 정리하는 문서 
+
+----
+
+===== 사용 라이브러리 =====
+
+  * [[http://search.cpan.org/dist/Time-Out/Out.pod|Time::Out]]
+
+===== 테스트 내용 =====
+
+==== 테스트 코드 ====
+
+  * TimeoutTest.pm <code perl>
+  1 #!/usr/bin/env perl
+  2
+  3 package TimeoutTest;
+  4
+  5 use strict;
+  6 use warnings;
+  7 use Time::Out qw(timeout);
+  8
+  9 my $OP_TIME = shift;
+ 10
+ 11 sub tgt_func
+ 12 {
+ 13     sleep shift;
+ 14     return "done.\n";
+ 15 }
+ 16
+ 17 my $msg = "The function is ";
+ 18 my $start = time();
+ 19 if( my $ret_v = timeout 10 => sub{ return tgt_func($OP_TIME); } ){
+ 20     $msg .= $ret_v;
+ 21 }
+ 22 else{
+ 23     $msg .= "failed.\n";
+ 24 }
+ 25 my $taken_time = time() - $start;
+ 26
+ 27 print $msg;
+ 28 print "It takes $taken_time second.\n";
+
+</code>
+
+==== 테스트 결과 ====
+
+  * ''perl TimeoutTest.pm 6''<code>
+[root@gcluster-1 time_out]# perl TimeoutTest.pm 3
+The function is done.
+It takes 3 second.
+</code>
+  * ''perl time_out_check.pm 14''<code>
+[root@gcluster-1 time_out]# perl TimeoutTest.pm 14
+The function is failed.
+It takes 10 second.
+</code>

@@ -1,0 +1,120 @@
+====== 사용자 return message 정의 ======
+
+===== 문서 개요 =====
+
+  * [[task:ac2_workload_manager:start|AnyCloud 작업 관리 프레임워크 개발 문서]]의 하위 문서
+  * 작업 관리 프레임워크 Jipper가 Queue의 작업들을 모두 완료했을 때 사용자에게 돌려줄 message의 서식을 정의하고 message 전달 방안을 조사하는 문서
+
+
+----
+
+===== Queue의 작업들이 모두 완료되었을 때 사용자에게 반환해야 할 정보 =====
+
+==== Queue 관련 정보 ====
+
+  ;fucntion_calls : 실행한 function의 갯수
+  ;context : 최종 context
+  ;run_result : Queue 작업 수행 결과
+  ;failed_job_list : 실패한 작업들의 정보
+  
+==== Job 관련 정보 ====
+
+  ;job_id : 작업 식별자
+  ;state : 작업의 상태
+  ;operation : 작업 함수 이름
+  ;library : 작업 함수의 라이브러리
+  ;op_time : 수행 시간
+  ;op_return : 반환값
+
+----
+
+=== Job State 값의 종류와 의미 ===
+
+  * **“SUCCESS”** : 작업이 성공했음
+  * **“SUCCESS, CANCELED”** : 해당 작업은 성공했으나 다른 작업의 실패로 인해 작업이 취소됨
+  * **“SUCCESS, FAILED”** : 다른 작업의 실패로 인해 작업을 취소하려 했으나 실패했음
+  * **“FAILED, CANCELED”** : 작업이 실패해서 해당 작업 내용이 취소되었음
+  * **“FAILED, FAILED”** : 작업도 실패하고 해당 작업 내용을 취소하는 과정도 실패했음
+  * **“TIMEOUT, CANCELED”** : 작업이 최대 수행 시간(expired_time)동안 완료되지 못해서 작업이 취소됨
+  * **“TIMEOUT, FAILED”** : 작업이 최대 수행 시간(expired_time)동안 완료되지 못해서 작업을 취소하려 했으나 실패했음
+  * **“NOLIB”** : 작업의 library가 지정되지 않아 작업이 수행되지 않았음
+===== 사용자 return message 서식 =====
+
+<code perl>
+{
+    "function_calls" => ##,
+    "context" => {
+        "key1" => value1,
+        "key2" => value2,
+        ...
+    },
+    "run_result" => DONE|FAILED|CANCELED,
+    "failure_indices" => [ #, #, ... ], //failed_job_list, 실패한 operation의 정보를 가지고 있는 op_history 항목의 index 목록임
+    "op_history" => [
+        {
+            "job_id" => 1,
+            "state" => ${job_state},
+            "opertaion" => ${function_name},
+            "library" => ${opertaion_libaray},
+            "op_time" => ##,
+            "op_return" => { "key1" => value1, "key2" => value2, ... }
+        },
+        {
+            "job_id" => 2,
+            "state" => ${job_state},
+            "opertaion" => ${function_name},
+            "library" => ${opertaion_libaray},
+            "op_time" => ##,
+            "op_return" => { "key1" => value1, "key2" => value2, ... }
+        }, ...
+    ]
+}
+</code>
+
+===== return message 전달 방식 =====
+
+  - queue가 작업을 하나씩 진행할 때마다 operation 정보와 결과를 return_message->{operation_history}에 추가 & return_message->{fuction_calls} 갱신
+  - queue가 작업을 완전히 수행했을 때 return_message->{context}, return_message->{opertaion_result} 갱신
+  - 갱신된 return_message를 반환
+
+===== return 체크 예제 =====
+
+<code perl>
+package "Pkg::MyApp";
+ 
+use "Jipper::Job";
+use "Jipper::QueueManager";
+
+...
+
+$my_queue->enqueue($job1);
+$my_queue->enqueue([$job2, $job3]);
+ 
+my $work_result = $my_queue->run();
+
+if($work_result->{run_result} ne "DONE")
+{
+    foreach my $idx (@{$work_result->{failure_indices}})
+    {
+        my $checking_job = $work_result->{job_history}->[$idx];
+        
+        my $jid = $checking_job->{job_id};
+        my $op_name = $checking_job->{operation}
+        print "$op_name이 실패했습니다.(job_id: $jid)";
+    }
+}
+elsif(!defined $work_result->{context}->{target})
+{
+    for(my $idx=0; $idx<$work_result->{function_calls}; $idx++)
+    {
+        my $checking_job = $work_result->{job_history}->[$idx];
+        
+        continue if($checking_job->{operation} eq "according_function");
+        
+        print "according_function이 성공했으나 작업 내용이 적용되지 않았습니다.";
+        print "according_function의 return은 다음과 같습니다.\n".$checking_job->{op_return};
+        print "according_function의 수행시간은 $checking_job->{op_time}초 입니다.";
+    }
+}
+
+</code>

@@ -1,0 +1,95 @@
+====== Jipper::QueueManager API 설계 ======
+===== 문서 개요 =====
+
+  * [[task:ac2_workload_manager:start|AnyCloud 작업 관리 프레임워크 개발 문서]]의 하위 문서
+  * 작업 관리 프레임워크 Jipper의 QueueManager 객체가 지원할 함수의 사용자 인터페이스를 정의하는 문서
+
+----
+
+===== Jipper::QueueManager API 목록 =====
+
+^  API 이름       ^  기능 설명                                        ^  비고  |
+^new              |새로운 Queue Manager를 생성한다.                    |       |
+^enqueue          |Queue에 새로운 Job을 넣는다.                        |       |
+^register_library |Queue에서 기본을 사용할 operation_library를 지정한다.|       |
+^run              |Queue안에 있는 Job 객체들을 실행한다.                |       |
+^get_jobs         |QueueManager가 관리하는 queue를 조회한다.            |       |
+
+----
+
+===== Jipper::QueueManager API 상세 =====
+
+++++new|
+  * 요청 인자값
+    * $arg1: queue 라이브러리 이름
+
+  * 응답 결과값
+    * 다음과 같은 값을 갖는 Job 객체
+    * job_number = 0
+    * operation_direction = "FORWARD"
+    * queue_library = "UNINIT" or 사용자 입력값
+    * state = "EMPTY"
+    * queue_return = "UNINIT"
+    * job_queue = "UNINIT"
+    * running_job = "QUEUE_NOT_RUNNING"
+    * last_job = "UNINIT"
+++++
+
+++++enqueue|
+  * 요청 인자값
+    * $arg1: Job 객체 or Job 객체의 배열
+
+  * 응답 결과값
+    * 할당된 Job_id or 할당된 Job_id들의 배열
+++++
+
+++++register_library|
+  * 요청 인자값
+    * $arg1: queue 라이브러리 이름
+
+  * 응답 결과값
+    * QueueManager->{queue_library}
+++++
+
+++++run|
+  * 요청 인자값: 없음
+
+  * 응답 결과값
+  * <code perl>
+{
+    "function_calls" => ##,
+    "context" => {
+        "key1" => value1,
+        "key2" => value2,
+        ...
+    },
+    "run_result" => DONE|FAILED|CANCELED,
+    "failure_indices" => [ #, #, ... ], //실패한 operation의 정보를 가지고 있는 op_history 항목의 index 목록
+    "op_history" => [
+        {
+            "job_id" => 1,
+            "state" => ${job_state},
+            "opertaion" => ${function_name},
+            "library" => ${opertaion_libaray},
+            "op_time" => ##,
+            "op_return" => { "key1" => value1, "key2" => value2, ... }
+        },
+        {
+            "job_id" => 2,
+            "state" => ${job_state},
+            "opertaion" => ${function_name},
+            "library" => ${opertaion_libaray},
+            "op_time" => ##,
+            "op_return" => { "key1" => value1, "key2" => value2, ... }
+        }, ...
+    ]
+}
+</code>
+++++
+
+++++get_jobs|
+  * 요청 인자값: 없음
+
+  * 응답 결과값
+    * QueueManager->{job_queue}
+++++

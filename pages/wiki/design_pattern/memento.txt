@@ -1,0 +1,176 @@
+====== Memento 패턴 ======
+===== 문서 개요 =====
+
+  * 디자인 패턴(design pattern)의 구조적 패턴에 속하는 Memento 패턴에 대한 개념을 정리한 문서
+  * Memento 패턴의 특징, 용례 등을 정리한 문서
+
+-----
+
+===== Memento 패턴의 정의 =====
+
+  * 객체를 이전 상태로 복구 시키는 패턴
+  * encapsulate the state of an existing object in a new object to implement a "restore" capability
+  * An unlimited "undo" and "redo" capability can be readily implemented with a stack of Command objects and a stack of Memento objects
+  * defines three distinct roles
+    - Originator - the object that knows how to save itself.
+    - Caretaker - the object that knows why and when the Originator needs to save and restore itself.
+    - Memento - the lock box that is written and read by the Originator, and shepherded by the Caretaker.
+
+===== Memento 패턴이 유용한 상황 =====
+
+  * Need to restore an object back to its previous state (e.g. "undo" or "rollback" operations)
+  * When it needs to checkpoint the source object's state
+
+
+===== Memento 패턴의 구조 =====
+
+{{:wiki:design_pattern:memento:memento_structure.jpg?nolink|}}
+
+===== Memento 패턴 작성 단계 =====
+
+  - Identify the roles of “caretaker” and “originator”.
+  - Create a Memento class and declare the originator a friend.
+  - Caretaker knows when to "check point" the originator.
+  - Originator creates a Memento and copies its state to that Memento.
+  - Caretaker holds on to (but cannot peek into) the Memento.
+  - Caretaker knows when to "roll back" the originator.
+  - Originator reinstates itself using the saved state in the Memento.
+
+
+===== Memento 패턴의 예시 =====
+
+==== CPP ====
+
+<code cpp>
+#include <iostream>
+#include <string>
+#include <cstdlib>
+#include <ctime>
+#include <unistd.h>
+
+using namespace std;
+
+/*
+    encapsulate the state of an existing object
+    in a new object to implement a "restore" capability
+*/
+
+class checkpoint
+{
+private:
+    int x;
+    int y;
+public:
+    checkpoint(int x_in, int y_in){ x=x_in; y=y_in; }
+    int get_x(){ return x; }
+    int get_y(){ return y; }
+};
+
+class point
+{
+private:
+    int x;
+    int y;
+public:
+    point(int x_in, int y_in){ x=x_in; y=y_in; }
+    int get_x(){ return x; }
+    int get_y(){ return y; }
+
+    void say_where_is_it(){
+        cout << "the point is at x = " << x << ", y = " << y << endl;
+    }
+
+    void go_right(){ go_right(1); }
+    void go_right(int distant){ x += distant; }
+
+    void go_left(){ go_left(1); }
+    void go_left(int distant){ x -= distant; }
+
+    void go_up(){ go_up(1); }
+    void go_up(int distant){ y += distant; }
+
+    void go_down(){ go_down(1); }
+    void go_down(int distant){ y -= distant; }
+
+    checkpoint* check_the_point(){
+        cout << "check the point!! (x= " << x << ", y= " << y << ")" << endl;
+        return new checkpoint(x,y);
+    }
+    void return_to_the_point(checkpoint* return_point){
+        cout << "return to the point~ "
+            << "(x= " << return_point->get_x()
+            << ", y= " << return_point->get_y() << ")"
+        << endl;
+
+        x = return_point->get_x();
+        y = return_point->get_y();
+    }
+};
+
+int main(int argc, char** argv)
+{
+    checkpoint* cp = new checkpoint(0,0);
+    point pnt(0,0);
+    srand(time(NULL));
+
+    pnt.say_where_is_it();
+    while(1){
+        int select = rand() % 6;
+        if(select == 0){ pnt.go_right(rand() % 5 + 1); }
+        else if(select == 1){ pnt.go_left(rand() % 5 + 1); }
+        else if(select == 2){ pnt.go_up(rand() % 5 + 1); }
+        else if(select == 3){ pnt.go_down(rand() % 5 + 1); }
+        else if(select == 4){ pnt.return_to_the_point(cp); }
+        else{ cp = pnt.check_the_point(); }
+
+        if(select <= 4 ){ pnt.say_where_is_it(); }
+        usleep(1000000);
+    }
+
+    return 0;
+}
+
+/* result (example)
+the point is at x = 0, y = 0
+the point is at x = -4, y = 0
+the point is at x = -4, y = -1
+the point is at x = -4, y = 3
+check the point!! (x= -4, y= 3)
+the point is at x = -4, y = 6
+return to the point~ (x= -4, y= 3)
+the point is at x = -4, y = 3
+the point is at x = -4, y = 5
+return to the point~ (x= -4, y= 3)
+the point is at x = -4, y = 3
+the point is at x = -4, y = 8
+check the point!! (x= -4, y= 8)
+the point is at x = -2, y = 8
+the point is at x = -2, y = 13
+return to the point~ (x= -4, y= 8)
+the point is at x = -4, y = 8
+the point is at x = -4, y = 13
+check the point!! (x= -4, y= 13)
+the point is at x = -4, y = 16
+the point is at x = -9, y = 16
+the point is at x = -12, y = 16
+the point is at x = -13, y = 16
+the point is at x = -13, y = 14
+the point is at x = -13, y = 9
+the point is at x = -13, y = 13
+the point is at x = -16, y = 13
+check the point!! (x= -16, y= 13)
+the point is at x = -20, y = 13
+the point is at x = -25, y = 13
+the point is at x = -29, y = 13
+the point is at x = -29, y = 10
+the point is at x = -33, y = 10
+the point is at x = -33, y = 6
+return to the point~ (x= -16, y= 13)
+the point is at x = -16, y = 13
+the point is at x = -16, y = 12
+the point is at x = -16, y = 16
+*/
+
+
+</code>
+

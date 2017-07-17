@@ -1,0 +1,160 @@
+====== Bridge 패턴 ======
+===== 문서 개요 =====
+
+  * 디자인 패턴(design pattern)의 구조적 패턴에 속하는 Bridge 패턴에 대한 개념을 정리한 문서
+  * Bridge 패턴의 특징, 용례 등을 정리한 문서
+
+-----
+
+===== Bridge 패턴의 정의 =====
+
+  * the wrapper models "abstraction" and the wrappee models many possible "implementations" ... the wrapper can use inheritance to support abstraction specialization
+  * Publish interface in an inheritance hierarchy, and bury implementation in its own inheritance hierarchy.
+  * Beyond encapsulation, to insulation
+  * This is a design mechanism that encapsulates an implementation class inside of an interface class
+
+===== Bridge 패턴이 유용한 상황 =====
+
+  * __구현 뿐만 아니라 추상화된 부분까지 변경시켜야 하는 경우 사용__
+  * Separates an object’s interface from its implementations
+  * you want run-time binding of the implementation,
+  * you have a proliferation of classes resulting from a coupled interface and numerous implementations,
+  * you want to share an implementation among multiple objects,
+  * you need to map orthogonal class hierarchies.
+
+
+===== Bridge 패턴의 구조 =====
+
+{{:wiki:design_pattern:bridge:bridge_structure.jpg?nolink|}}
+
+===== Bridge 패턴 작성 단계 =====
+
+  - Decide if two orthogonal dimensions exist in the domain. These independent concepts could be: abstraction/platform, or domain/infrastructure, or front-end/back-end, or interface/implementation.
+  - Design the separation of concerns: what does the client want, and what do the platforms provide.
+  - Design a platform-oriented interface that is minimal, necessary, and sufficient. Its goal is to decouple the abstraction from the platform.
+  - Define a derived class of that interface for each platform.
+  - Create the abstraction base class that "has a" platform object and delegates the platform-oriented functionality to it.
+  - Define specializations of the abstraction class if desired.
+
+===== Bridge 패턴의 예시 =====
+
+==== CPP ====
+
+<code cpp>
+#include "iostream"
+#include <stdlib.h>
+using namespace std;
+
+/*
+   the wrapper models “abstraction” and 
+   the wrappee models many possible “implementations” … 
+   the wrapper can use inheritance to support abstraction specialization
+*/
+
+class Item
+{
+public:
+    virtual void use() = 0;
+    virtual string get_name() = 0;
+};
+
+class RedPotion:public Item
+{
+public:
+    void use(){
+        cout << "Pyo Ro Rong~~" << endl;
+        cout << "Your HP is restored!!" << endl;
+    }
+    string get_name(){ return "red potion"; }
+};
+
+class BluePotion:public Item
+{
+public:
+    void use(){
+        cout << "Ti Ri Ring!!" << endl;
+        cout << "Your MP is restored~" << endl;
+    }
+    string get_name(){ return "blue potion"; }
+};
+
+class User
+{
+public:
+    virtual void use_item() = 0;
+    virtual void root_item(Item*) = 0;
+    virtual void drop_item() = 0;
+};
+
+class Player:public User
+{
+private:
+    Item* possessed;
+    string name;
+public:
+    Player(){
+        this->name = "Bakeun";
+    }
+    Player(string name){
+        this->name = name;
+    }
+    string get_name(){ return this->name; }
+    void use_item(){
+        cout << name << " use";
+        if(possessed != 0){
+            cout << " " << possessed->get_name() << endl;
+            possessed->use();
+            possessed = 0;
+        }else{
+            cout << "..." << endl;
+            cout << "There is no items..." << endl;
+        }
+    }
+    void root_item(Item* gotten){
+        if(possessed != 0){
+            cout << name << " already has a item." << endl;
+        }else{
+            cout << name << " gets a " << gotten->get_name() << endl;
+            possessed = gotten;
+        }
+    }
+    void drop_item(){
+        if(possessed != 0){
+            cout << name << " drop the " << possessed->get_name() << endl;
+            possessed = 0;
+        }
+    }
+};
+
+int main(int argc, char** argv)
+{
+    Item* rp = new RedPotion();
+    Item* bp = new BluePotion();
+    Player* bakeun = new Player("Bakeun");
+    string player_name = bakeun->get_name();
+    cout << "I'm " << player_name << endl;
+    bakeun->root_item(rp);
+    bakeun->root_item(bp);
+    bakeun->use_item();
+    bakeun->root_item(bp);
+    bakeun->drop_item();
+    bakeun->use_item();
+    return 1;
+}
+
+/* Result
+
+I'm Bakeun
+Bakeun gets a red potion
+Bakeun already has a item.
+Bakeun use red potion
+Pyo Ro Rong~~
+Your HP is restored!!
+Bakeun gets a blue potion
+Bakeun drop the blue potion
+Bakeun use...
+There is no items...
+
+*/
+</code>
+

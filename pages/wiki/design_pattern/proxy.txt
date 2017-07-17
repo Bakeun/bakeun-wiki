@@ -1,0 +1,169 @@
+====== Proxy 패턴 ======
+===== 문서 개요 =====
+
+  * 디자인 패턴(design pattern)의 구조적 패턴에 속하는 Proxy 패턴에 대한 개념을 정리한 문서
+  * Proxy 패턴의 특징, 용례 등을 정리한 문서
+
+-----
+
+===== Proxy 패턴의 정의 =====
+
+  * 객체를 감싸서 그 객체에 대한 접근을 제어하는 패턴
+  * wrap an object with a surrogate object that provides additional functionality
+  * remote proxy, virtual proxy, protection proxy, 방화벽 프록시, 스마트 레퍼런스 프록시, 캐싱 프록시, 동기화 프록시, 복잡도 숨김 프록시, 지연 복사 프록시 등이 있음
+
+
+===== Proxy 패턴이 유용한 상황 =====
+
+  * 객체 생성의 비용이 클 때, 클라이언트와 최초로 통신하는 경우에만 객체를 생성하고 이후 통신부터는 이미 만들어진 객체를 클라이언트에 연결해주는 프록시가 유용
+  * A remote proxy provides a local representative for an object that resides in a different address space. This is what the "stub" code in RPC and CORBA provides.
+  * 특정 객체에 대한 접근을 제어하는 프록시를 두어 보안 수준을 높일수 있음.
+  * 특정 객체에 접근할때 추가로 필요한 작업을 하는 프록시를 두어 해당 객체에 접근할때 반복적으로 해야하는 작업을 자동으로 수행할 수 있음. 아래에 활용 사례를 나열
+    * Counting the number of references to the real object so that it can be freed automatically when there are no more references (aka smart pointer),
+    * Loading a persistent object into memory when it's first referenced,
+    * Checking that the real object is locked before it is accessed to ensure that no other object can change it.
+
+
+===== Proxy 패턴의 구조 =====
+
+{{:wiki:design_pattern:proxy:proxy_structure.jpg?nolink|}}
+
+===== Proxy 패턴 작성 단계 =====
+
+  - Identify the leverage or “aspect” that is best implemented as a wrapper or surrogate.
+  - Define an interface that will make the proxy and the original component interchangeable.
+  - Consider defining a Factory that can encapsulate the decision of whether a proxy or original object is desirable.
+  - The wrapper class holds a pointer to the real class and implements the interface.
+  - The pointer may be initialized at construction, or on first use.
+  - Each wrapper method contributes its leverage, and delegates to the wrappee object.
+
+===== Proxy 패턴의 예시 =====
+
+==== CPP ====
+
+<code cpp>
+#include "iostream"
+#include <stdio.h>
+#include <fcntl.h>
+#include <stdlib.h>
+#include <unistd.h>
+using namespace std;
+
+/*
+   Proxy wrap an object with a surrogate object 
+   that provides additional functionality
+*/
+
+class Interface{
+public:
+    virtual int do_with_count() = 0;
+    virtual int do_with_auth(string)  = 0;
+    virtual int do_with_auto()  = 0;
+};
+
+
+class RealObj:public Interface{
+private:
+    string name;
+public:
+    RealObj(){
+        name = "RealObj";
+    }
+    RealObj(string input){
+        name = input;
+    }
+    int do_with_count(){
+        cout << name << ":do_with_count" << endl;
+        return 1;
+    }
+    int do_with_auth(string guest){
+        cout << name << ":do_with_authorization" << endl;
+        return 1;
+    }
+    int do_with_auto(){
+        cout << name << ":do_with_automation" << endl;
+        return 1;
+    }
+};
+
+class Proxy:public Interface{
+private:
+    RealObj* real;
+    int count;
+    int max_authors;
+    string* author;
+    void init_proxy(){
+        count = 0;
+        max_authors = 2;
+        author = new string[max_authors];
+        author[0] = "bakeun";
+        author[1] = "yoojiny";
+    }
+    int is_accessible(string guest){
+        for(int i=0; i<max_authors; i++){
+            if(!guest.compare(author[i]))
+            { return 1; }
+        }
+        return 0;
+    }
+public:
+    Proxy(){
+        real = new RealObj;
+        this->init_proxy();
+    }
+    Proxy(RealObj* target){
+        real = target;
+        this->init_proxy();
+    }
+    ~Proxy(){
+        delete[] author;
+    }
+
+    int do_with_count(){
+        count++;
+        cout << "call count: " << count << endl;
+        real->do_with_count();
+        return 1;
+    }
+    int do_with_auth(string guest){
+        if(is_accessible(guest)){ 
+            cout << "Welcome, " << guest << endl;
+            real->do_with_auth(guest); 
+        }
+        else
+        { cout << guest << " is not accessable!!" << endl; }
+        return 1;
+    }
+    int do_with_auto(){
+        if(!access("./proxy_auto", 0)){
+            cout << "There is proxy_auto file. "
+                 << "Then remove the file" << endl;
+            remove("./proxy_auto");
+        }
+        else{
+            cout << "There is no proxy_auto file. "
+                 << "Then create the file" << endl;
+            creat("./proxy_auto", 644);
+        }
+        cout << "do_with_automation" << endl;
+        return 1;
+    }
+};
+
+int main(int argc, char** argv){
+    RealObj* my_obj = new RealObj("my_obj");
+    Proxy my_proxy(my_obj);
+
+    for(int i=0; i<5; i++){
+        my_proxy.do_with_count();
+    }
+
+    my_proxy.do_with_auth("yoojiny");
+    my_proxy.do_with_auth("doduknom");
+
+    my_proxy.do_with_auto();
+
+    return 0;
+};
+</code>
+

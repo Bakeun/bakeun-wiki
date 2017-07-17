@@ -1,0 +1,150 @@
+====== AnyCloud 작업 관리 프레임워크 개발 문서 ======
+===== 문서 개요 =====
+
+  * 작업 관리 프레임워크를 개발하기 위해 필요한 정보와 설계/개발 과정을 정리한 문서
+  * 개발 언어로는 perl을 사용할 것
+  * 산출 프레임워크는 Gluesys의 클러스터 스토리지 시스템인 AnyCloud의 프로세스 관리나 초기화 과정에서 사용할 것
+  * 2016년 1월 말 개발 완료를 목표로 함
+  * 관련 리뷰는 [[task:ac2_workload_manager:review|여기]]를 참고
+
+----
+===== AC2 작업 관리 프레임워크 Jipper =====
+
+==== 프레임워크 개요 ====
+
+  * [[https://en.wikipedia.org/wiki/Job_scheduler|Job Scheduler]]((Workload Automation라고도 함))의 범주에 속함
+  * 목적에 따라 필요한 작업(workload)을 알맞게 배치하여 프로세스를 구성하고 완성된 프로세스를 실행/관리/롤백하는 프레임워크.
+  * AnyCloud2의 job handler
+  * 프레임워크 이름 **Jipper**의 의미
+    * job + zipper
+    * zipper는 채웠다 풀렀다 할 수 있고, 채우다가도 풀를수 있음
+    * 위와 같은 zipper의 속성이 job을 순서대로 수행하고 수행중 에러 발생시 바로 rollback 할 수 있는 본 프레임워크의 속성과 비슷
+    * 프레임워크가 zipper의 속성을 가지고 있고 job을 처리하는 역할을 하므로 job과 zipper, 두 단어를 합쳐서 Jipper!
+==== 메인 아이디어 (핸드 노트) ====
+
+{{wiki:job_sequencer:hand_note.png}}
+
+==== 프레임워크 요구 사항 ====
+
+  * 각각의 작업에 대한 내용이 추상화 되어 개발자와 프로그램 모두 인지하기쉽고 변경하기 쉬워야 함
+  * 각각의 작업은 모듈화 되어야 함
+  * 각각의 작업은 해당 작업을 취소하는 방법을 고려해야 함, 경우에 따라 취소 방안이 없을수도 있음
+  * 작업의 순서는 개발자가 쉽게 변경할 수 있어야 함
+  * 각 작업은 타임아웃이 있을 수 있음
+  * 작업 실행시 매개변수를 지정할 수 있음
+  * 작업 결과를 개발자가 상세히 알 수 있어야 함
+  * 작업 결과의 detail을 개발자가 작성할 수 있어야 함
+  * Jipper 프레임워크 활용 시나리오
+  * <code perl>
+package "Pkg::MyApp";
+
+use "Jipper::Job";
+use "Jipper::QueueManager";
+
+sub func1{
+    my $args = shift;
+    my $context = shift;
+
+    // doing anything
+
+    if(success){
+        return Jipper::Job::make_return_success{ $ret_v };
+    }
+    if(fail){
+        return Jipper::Job::make_return_fail{ $ret_v2 };
+    }
+}
+sub revert_func1{
+    my $args = shift;
+    my $context = shift;
+
+    // doing anything
+
+    if(success){
+        return Jipper::Job::make_return_success{ $ret_v };
+    }
+    if(fail){
+        return Jipper::Job::make_return_fail{ $ret_v2 };
+    }
+}
+
+sub func2{
+    ...
+}
+sub revert_func2{
+    ...
+}
+
+sub func3{
+    ...
+}
+sub revert_func3{
+    ...
+}
+
+my $my_queue = new Jipper::QueueManager(...);
+$my_queue->register_lib("Pkg::MyApp");
+
+my $job1 = new Jipper::Job(func1, revert_func1, @args, options...);
+my $job2 = new Jipper::Job(func2, revert_func2, @args, options...);
+my $job3 = new Jipper::Job(func3, revert_func3, @args, options...);
+
+$my_queue->enqueue($job1);
+$my_queue->enqueue([$job2, $job3]);
+
+my $work_result = $my_queue->run();
+
+print $work_result;
+</code>
+
+
+----
+
+===== 자료 조사 =====
+
+==== 기존 기술 조사 ====
+
+  * [[task:ac2_workload_manager:survey|job queue/job scheduler 사전 기술 조사]] 참고
+  * 상용 Job queue/Job Scheduler 조사 결과
+    * 단순한 구조를 지향하는 Jipper의 특성과 많은 기능을 제공하는 상용 Job scheduler, Job queue의 특성이 맞지 참고해서 설계할 요소를 발견하기 어려웠음.
+    * 다만, 상용 Job Scheduler의 자료구조나 클래스는 참고하여 개발할 수 있을것!
+  * Job Scheduling Perl Library 물색 결과
+    * 기존의 job scheduling perl library 중 본 프로젝트의 요구 조건에 만족하는 것이 없음
+
+
+----
+===== 설계 =====
+
+==== 설계 방향 ====
+
+  * Job 추상화 객체를 다음과 같이 구현
+    * Job 객체를 초기화하는 인터페이스를 사용자에게 제공
+    * Job 객체에 해당 Job의 동작 방식을 정의하는 함수와 Job이 수행한 내용을 되돌리는 함수의 포인터를 연결
+    * 수행 내용을 되돌리는 함수가 없으면 작업 취소를 하지않고 다음 단계로 넘어감(skip)
+    * 객체 내에 매개변수를 저장하는 arguments 속성을 지님
+    * 객체 내에 작업 시간을 저장하는 timeout 속성을 지님
+    * 객체 내에 작업의 성공 여부를 나타내는 done 속성을 지님
+  * Queue manager를 다음과 같이 구현
+    * Job 목록을 입력 받아서 순서대로 하나씩 실행하고 Job이 성공하면 다음 Job으로 넘어가고 실패하면 역순으로 취소 함수를 실행하도록 함
+    * Job의 return 값과 수행 결과를 사용자가 보기 좋은 형태로 표현함
+    * Job을 정의하는 함수들이 위치한 package 정보를 받아서 library로 등록
+    * Job을 정의하는 함수 내에서 Job 객체를 사용할 수 있도록 함
+
+
+==== 주요 설계 포인트 ====
+
+  * Job 추상화 클래스
+    * [[task:ac2_workload_manager:job_definition|Job 클래스의 역할 & 구조 설계]]
+  * Queue manager
+    * [[task:ac2_workload_manager:queue_manager_definition|Queue manager의 Job 관리 구조 설계]]
+    * [[task:ac2_workload_manager:queue_manager_workflow|Queue manager의 작업 흐름도 설계]]
+    * [[task:ac2_workload_manager:way_for_timeout|입력받은 Job 객체의 timeout 처리 방안 모색]]
+  * User <-> Job 사이의 인터페이스
+    * [[task:ac2_workload_manager:job_api|User가 사용할 Job 생성/수정 함수 설계]]
+  * User <-> Queue manager 사이의 인터페이스
+    * [[task:ac2_workload_manager:queue_manager_api|User가 사용할 Queue manager 생성/설정 함수 설계]]
+    * [[task:ac2_workload_manager:way_to_deliver_library|User가 전달한 package를 library로 등록하는 방안 모색]]
+    * [[task:ac2_workload_manager:user_return_message|User에게 전달할 return message 포멧 정의 및 전달 방안 모색]]
+  * Job <-> Queue manager 사이의 인터페이스
+    * Job을 정의하는 함수에 상위 Job 객체를 전달하는 방안 모색
+    * Job의 반환값에 대한 처리 방안 모색

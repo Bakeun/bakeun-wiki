@@ -1,0 +1,116 @@
+====== Facade 패턴 ======
+===== 문서 개요 =====
+
+  * 디자인 패턴(design pattern)의 구조적 패턴에 속하는 Facade 패턴에 대한 개념을 정리한 문서
+  * Facade 패턴의 특징, 용례 등을 정리한 문서
+
+-----
+
+===== Facade 패턴의 정의 =====
+
+  * __일련의 클래스에 대해서 간단한 인터페이스를 제공하는 패턴__
+  * 어떤 서브시스템의 일련의 인터페이스에 대한 통합된 인터페이스를 제공
+  * 인터페이스를 간단하게 변환(포인트)
+  * A single class that represents an entire subsystem
+  * wrap a complicated subsystem with an object that provides a simple interface
+  * 하나의 시스템에서 하나의 작업을 처리하는데 여러개의 클래스의 상호 동작이 필요할때, 이것을 묶어서 처리할 수 있음
+  * 사용자가 복잡한 내부절차를 알지 못해도 단순한 인퍼페이스로 시스템을 사용할 수 있음
+
+
+===== Facade 패턴이 유용한 상황 =====
+
+  * A segment of the client community needs a simplified interface to the overall functionality of a complex subsystem.
+
+
+===== Facade 패턴의 구조 =====
+
+{{:wiki:design_pattern:facade:facade_structure.jpg?nolink|}}
+
+
+===== Facade 패턴 작성 단계 =====
+
+  - Identify a simpler, unified interface for the subsystem or component.
+  - Design a “wrapper” class that encapsulates the subsystem.
+  - The facade/wrapper captures the complexity and collaborations of the component, and delegates to the appropriate methods.
+  - The client uses (is coupled to) the Façade only.
+  - Consider whether additional Facades would add value.
+
+
+===== Facade 패턴의 예시 =====
+
+==== CPP ====
+
+<code cpp>
+#include "iostream"
+#include <stdlib.h>
+using namespace std;
+
+/*
+   wrap a complicated subsystem with an object 
+   that provides a simple interface
+*/
+
+/* required interface */
+class UserInterface{
+public:
+    virtual void set_option(string) = 0;
+    virtual void drive() = 0;
+};
+
+/* subsystems */
+class Subsystem_One{
+public:
+    void handle_A(){ cout << "Subsystem one starts to handle A" << endl; }
+};
+
+class Subsystem_Two{
+public:
+    void handle_B(){ cout << "Subsystem two starts to handle B" << endl; }
+};
+
+class Subsystem_Three{
+public:
+    void handle_C(){ cout << "Subsystem three starts to handle C" << endl; }
+};
+
+/* Facade */
+class FullSystem: public UserInterface{
+private:
+    Subsystem_One one;
+    Subsystem_Two two;
+    Subsystem_Three three;
+    string option;
+
+public:
+    FullSystem(){ option = "basic"; }
+    void set_option(string input_option){
+        if( !input_option.empty() ){
+            option = "full";
+        }
+    }
+    void drive(){
+        if( !option.compare("full") ){ drive_with_full(); }
+        else{ drive_with_basic(); }
+    }
+    void drive_with_basic(){
+        one.handle_A();
+        two.handle_B();
+    }
+    void drive_with_full(){
+        one.handle_A();
+        two.handle_B();
+        three.handle_C();
+    }
+};
+
+int main(int argc, char** argv){
+    string option;
+    if(argc > 1){ option = argv[1]; }
+
+    FullSystem my_system;
+    my_system.set_option(option);
+    my_system.drive();
+    return 0;
+}
+
+</code>

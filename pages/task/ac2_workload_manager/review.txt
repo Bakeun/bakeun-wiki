@@ -1,0 +1,87 @@
+====== AnyCloud 작업 관리 프레임워크(Jipper) 리뷰 사항 목록 ======
+===== 문서 개요 =====
+
+  * [[task:ac2_workload_manager:start|AnyCloud 작업 관리 프레임워크 개발 문서]]의 하위 문서
+  * Jipper에 대한 팀원들의 의견를 모아둔 문서
+
+----
+
+===== 전반적인 설계에 대한 리뷰 =====
+
+    * [[task:ac2_workload_manager:start|문서 링크]]
+    * 이태화
+      * queue에 job을 append 하는 것만 있는데 insert는 필요가 없는걸까?
+    * 김경표
+      * use로 불러온 라이브러리 내의 함수도 Jipper::Job의 operation으로 등록할 수 있으면 좋겠음
+
+===== 주요 설계 포인트에 대한 리뷰 =====
+
+==== Job 클래스의 역할 & 구조 설계 ====
+
+  * [[task:ac2_workload_manager:job_definition|문서 링크]]
+
+==== Queue manager의 Job 관리 구조 설계 ====
+
+  * [[task:ac2_workload_manager:queue_manager_definition|문서 링크]]
+
+==== Queue manager의 작업 흐름도 설계 ====
+
+  * [[task:ac2_workload_manager:queue_manager_workflow|문서 링크]]
+
+
+==== Job API 설계 ====
+
+  * [[task:ac2_workload_manager:job_api|문서 링크]]
+  * 이태화
+    * set_{forward,backward}_operation 보다 사용자 입장에서 의미가 강한 네이밍이 좋을듯((예를 들면set_transactions(forward, backward) 이라든지 set_do_op(), set_undo_op()라든지...))
+    * ++추후 디버깅용으로 Queue에 할당된 job 리스트를 가져오는 get_jobs 같은 함수으면 좋을것 같음.|
+    * (이태화) get_queue가 저건가. get_queue하니까 큐가 여러개 있는데 그중 가져오는 것으로 보임
+    * (박근영) 네. get_queue가 job 리스트를 가져오는 기능임..
+      하지만 이름에 혼동할 만한 요소가 있으니 get_jobs로 이름을 바꾸는게 좋을듯
+++
+
+==== QueueManager API 설계 ====
+
+  * [[task:ac2_workload_manager:queue_manager_api|문서 링크]]
+  * 이태화
+    * register_default_library 함수명을 set_library같이 단순히 써도 명료할듯!
+
+==== User에게 전달할 return message 포멧 정의 및 전달 방안 모색 ====
+
+  * [[task:ac2_workload_manager:user_return_message|문서 링크]]
+  * 이태화
+    * ++operation_result 를 기존에 사용중인 OK, ERR 형태로 가는게 어떨까?|
+    * (박근영) 이 항목에서는 "모든 작업이 정상적으로 완료되었다" "작업이 실패했다"외에도
+      "작업이 실패했지만 성공적으로 취소되었다" 라는 상태가 하나 더 필요함
+      -> 따라서 OK/ERR/CANCELD로 정하면 좋을것
+++
+    * ++operation => op로 변경하면 어떨까?|
+    * (박근영) 가독성을 위해서 단어 전체를 사용했던 것인데
+      op의 경우에는 많이들 사용하는 거니까 줄여도 좋을것
+++
+    * ++실패한 함수를 알 수 있었으면 좋겠음|
+    * (박근영) 좋은 생각. failure_list = [인덱스, 인덱스, ..] 와 같은 형태로 추가하겠음
+++
+  * 김경표
+    * ++에러시 queue 자체 오류인지, 함수 수행 오류인지에 대해 알수 있어야 함|
+    * (박근영) 사용자 return에 해당 내용을 넣는다 해도 queue 자체의 에러이면
+      return 내용이 정확하지 않을 것
+      -> 따라서, queue 자체의 로그를 잘 정의함으로써 에러의 원인에 대한 판단을 돕는 것이 어떨까?
+++
+    * ++"operation_return" 은 레퍼런스 해쉬에 기반한 사용자 정의인가?|
+    * (박근영) 넵. operation_return은 함수 내에서 사용자가 정의해 return한 내용을 보여주는 항목.
+++
+    * ++job_state 의 정의가 어떤 형태일지?|
+    * (박근영) job_state는 "SUCCESS"/("작업이 성공했음"),"FAILED"/("작업이 실패했음"),
+      "CANCELED"("작업이 성공적으로 취소됨"), "TIMEOUT"/("작업이 최대 수행 시간동안 완료되지 못했음"),
+      "NOLIB"("작업의 operation_library가 지정되지 않았음")을 기본으로 구성됨
+    * (박근영) 작업이 취소되는 경우에 한해서 "${forward_op_state}, ${backward_op_state}"와 같이
+      두가지 상태를 가짐
+++
+    * ++ 함수 수행 오류 원인 참조가 용이했으면!|
+    * (박근영) 함수 수행 오류 원인은 사용자가 return 값에 적어서 전달해주면
+      operation_return에서 확인할 수 있음
+++
+    * ++ 리턴체크 셈플 예제가 있으면 좋을것! |
+    * (박근영) 리턴 체크 샘플 예제를 작성이 사용자 이해를 돕기위해 필요할듯. 추가하겠음
+++

@@ -1,0 +1,91 @@
+====== Queue manager의 Job 관리 구조 설계 ======
+
+===== 문서 개요 =====
+
+  * [[task:ac2_workload_manager:start|AnyCloud 작업 관리 프레임워크 개발 문서]]의 하위 문서
+  * 작업 관리 프레임워크 Jipper의 Queue 관리자의 역할과 구조를 정의하는 문서
+
+----
+
+===== 용어 정의 =====
+
+  ; forward_operation : 특정 작업을 수행하기 위해 실행해야 하는 함수
+  ; backward_operation : forward_operation이 실패했을 때 실행해야 하는 함수, forward_operation이 수행한 작업을 되돌리는 절차를 포함
+  
+
+----
+
+===== Queue 관리자의 역할 =====
+
+  * Queue에 들어있는 Job의 정보를 사용자에게 알려줌
+  * 사용자에게 입력받은 Job을 queue에 넣고 사용자가 넣은 순서대로 Job을 실행함
+  * 실행중인 Job이 실패했을때, 해당 Job의 상태를 변경하고 backwork_operation들을 실행함
+  * Queue 관리자가 실행했던 Job의 수행 결과를 사용자에게 알려줌
+
+
+===== Queue Manager의 job 관리 구조 ====
+
+==== Queue Manager 관리 구조의 속성 ====
+
+{{ :task:ac2_workload_manager:queue_class.png?nolink |Queue 관리자 구조 구성도}}
+
+^  속성명  ^  설명  ^  속성값  ^  비고  |
+^queue_id| 큐의 식별자 |  00001  | 우선은 한개의 큐로 한정, 추후 멀티 Queue 개발을 위한 확장 요소 |
+^job_number| 큐에 있는 작업의 갯수 |  int(0 이상)  |  |
+^operation_direction| 작업 방향 |  "FORWARD"   | Job을 큐에 들어온 순서대로 진행하는 상태 |
+^ :::               | :::      |  "BACKWARD"  | Job을 큐에 들어온 순서의 역순으로 진행하는 상태 |
+^queue_library| Queue의 operation library |  String(라이브러리명)  | Job을 처리할 때 기본으로 사용할 library |
+| :::         | :::                       |  "UNINIT"             | 값이 초기화되지 않음 |
+^context|Queue 작업 간 context|  Hash  | queue에 속한 job들 사이에서 공유되는 공간|
+^state|큐의 상태 |  "RUNNING"  |"작업을 수행중임"|
+^ ::: |:::      |  "READY"    |"작업을 수행할 준비가 됐음"|
+^ ::: |:::      |  "EMPTY"    |"수행할 작업이 없음"(default)|
+^queue_return|queue의 반환값|  Hash(([[task:ac2_workload_manager:user_return_message|여기]]를 참조))      |큐에서 수행한 작업의 결과를 보관|
+| :::        | :::         |  "UNINIT"  | 값이 초기화되지 않음 |
+^job_queue|작업 큐의 헤더|  Job obj. pointer  | header 역할을 하는 job obj.((prev_job이 "HEAD")) |
+| :::     | :::         |  "UNINIT"          | 값이 초기화되지 않음 |
+^last_job |작업 큐의 마지막에 위치한 작업|  Job obj. pointer  | 작업 큐의 관리를 위해 사용 |
+| :::     | :::                        |  "UNINIT"          | 값이 초기화되지 않음 |
+^running_job |현재 수행중인 작업|  "QUEUE_NOT_RUNNING"    | Queue가 작업을 수행하지 않을때 |
+^ :::        |:::              |  Job obj. pointer       | |
+
+==== Queue manager의 job_queue 관리 방안 ====
+
+{{ :task:ac2_workload_manager:job_queue_management.png?nolink |}}
+
+  * job_queue는 첫번째 Job 객체의 주소이다.
+  * 두번째 Job은 첫번째 Job의 next_job에 붙고 세번째 Job은 두번째 Job의 next_job에 붙는 방식으로 구현됨((링크드 리스트 기반의 큐))
+  * job_queue가 "UNINIT"이면 queue manager의 state를 "EMPTY"로 지정
+  * job_queue가 다른 Job의 주소이면 queue manager의 state를 "READY"로 지정
+
+==== Queue manager의 job_queue 사용예 (Ready) ====
+
+{{ :task:ac2_workload_manager:job_queue_example_ready.png?nolink |}}
+
+  * job_queue에는 5개의 job이 들어 있음
+  * queue manager는 **"READY"** 상태이므로 job_queue의 모든 Job이 아직 수행되지 않음((job state **"NOTYET"**))
+  * queue manager는 **"READY"** 상태이므로 running_job값은 **"QUEUE_NOT_RUNNING"**
+  * queue manager의 last_job에는 job_queue 마지막 자리의 Job을 가리킴
+  * job_queue 위치상 맨 앞에 오는 Job의 perv_job은 "HEAD"이고 맨 뒤에 오는 Job의 next_job은 "TAIL"로 지정
+
+==== Queue manager의 job_queue 사용예 (Add Job) ====
+
+{{ :task:ac2_workload_manager:job_queue_example_add_new_job.png?nolink |}}
+
+  * job_queue의 job_number 값을 하나 올림
+  * queue manager의 last_job이 가리키는 Job 객체의 next_job에 새로운 Job의 주소를 할당
+  * 새로운 Job에 job_id를 할당하고 상태와 속성들을 초기화함
+  * queue manager의 상태가 **"READY"**일때만 job을 추가할 수 있음
+  * 새로 추가되는 Job의 next_job은 **"TAIL"**
+
+==== Queue manager의 job_queue 사용예 (Running) ====
+
+{{ :task:ac2_workload_manager:job_queue_example_running.png?nolink |}}
+
+  * job_queue에는 6개의 job이 들어 있음
+  * queue manager는 **"RUNNIG"** 상태이고 Job1, Job2는 성공적으로 완료되었고 현재 Job3가 수행중인 상태
+  * Job4, Job5, Job6는 아직 순서가 오지 않아 아직 수행되지 않음(**"NOTYET"**)
+  * queue manager의 running_job은 현재 수행중인 Job3를 가리킴
+  * 정상 동작중이므로 queue manager의 operationg_direction은 **"FORWARD"**
+  * running_job과 last_job이 같아질 때 마지막 작업 후 queue manager state를 **"RUNNING"** 에서 **"READY"** 로 변경
+  * running_job이 queue 안의 Job과 공유하는 context를 사용함

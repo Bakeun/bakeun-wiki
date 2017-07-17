@@ -1,0 +1,288 @@
+====== AC2 작업 관리 프레임워크 개발의 사전 자료 조사 ======
+
+===== 문서 개요 =====
+
+  * 본 문서는 [[task:ac2_workload_manager:start|AnyCloud 작업 관리 프레임워크 개발 문서]]에서 사전 자료에 관한 내용만 추출하여 모아둔 것
+  * 조사 자료의 내용은 AnyCloud 작업 관리 프레임워크(Jipper) 개발에 참고하고 활용할 것
+  * 조사 결과 총평
+    * **상용 Job Scheduler의 많은 기능을 제공하려는 특징과 개발하고자 하는 산출물의 특징이 맞지 않아 참고 요소를 발견하기 어려움**
+    * **다만, 상용 Job Scheduler의 자료구조나 클래스는 참고하여 개발할 수 있을것!**
+    * **job scheduling perl library는 요구 조건을 만족하는 것이 없으므로 사용하지 않음**
+
+----
+===== 상용 Job Scheduler 특징 조사 =====
+
+  * AnyCloud 작업 관리 프레임워크를 설계할때 참고하기 위해서 상용 Job Scheduler들의 특징을 조사
+  * 아래에 나열한 것 이외에 더 다양한 Job Scheduler를 알아보려면 [[https://en.wikipedia.org/wiki/List_of_job_scheduler_software|여기로]]
+
+==== sos-berlin jobscheduler ====
+
+  * [[http://www.sos-berlin.com/jobscheduler|link]]
+  * 실행 파일이나 쉘스크립트, 데이터베이스 프로시저를 특정 이벤트((지정한 날짜가 됐다거나 외부 어플리케이션에 의해 API가 들어오는 등의 사용자가 설정해놓은 일정한 사건))가 발생했을때 자동으로 실행할 수 있음
+  * 모든 정보를 back-end 데이터베이스에 저장함
+  * 운영 방식
+    * batch 스케줄링을 위해 백그라운드에서 작동
+    * 작업을 제어하기위해 커맨드와 web-base GUI((JobScheduler Operation Cneter[[http://docplayer.net/docs-images/25/5669257/images/8-0.png|이렇게 생김]]))를 지원함
+    * 작업을 정의하기위해 graphical XML editor((JobScheduler Object Editor[[https://kb.sos-berlin.com/download/attachments/8226062/2016-03%20-%20JOE%20-%20Config%20Monitor%20Dir%20-%201%20-%20directory.png?version=1&modificationDate=1458730994000&api=v2|이런거]]))를 지원함
+  * 작업의 수행
+    * 작업의 병렬 수행이 가능
+    * 일련의 작업이 모인 집합을 job chain으로 정의
+      * job chain 내에서 작업간의 의존성을 설정할 수 있음
+      * 의존성이 있는 이전 작업의 결과에 따라 다음 작업의 실행 여부를 결정
+    * FTP로 실행 파일을 받아 실행하는 것이 가능
+  * 주요 특징
+    * 각 작업은 작업 수행 제한 시간((time slot))을 가짐
+    * 작업에 우선순위를 줄 수 있음
+    * 작업 내역이 데이터베이스에 저장됨((선택사항))
+    * 여러 작업의 병렬 수행을 위해 한 작업이 사용하는 자원((파일이나 데이터베이스))에 락을 걸어줌
+    * 작업 수행 결과를 이메일로 전송
+    * 로깅, 로그 모니터링을 설정할 수 있음
+    * API로 JobScheduler의 작업을 운용할 수 있음((다른 어플리케이션으로 작업을 만들고 실행시킬수 있다는 말))
+    * GUI 제공
+    * 고가용성 클러스터링 지원(High-availability Clustering)<code>
+a JobScheduler backup cluster will ensure fail-safe operation and fault tolerance
+with automatic fail-over.Fail-safe systems consist of a primary JobScheduler and
+at least one backup, with both JobSchedulers running on different computers.</code>
+    * 작업량 분배(Load Sharing)<code>
+multiple JobSchedulers will speed up the processing time considerably and provide higher
+availability when processing a high volume of data with time consuming procedures. 
+In load sharing mode processing tasks are shared between multiple JobSchedulers that are
+handle distributed orders on more than one host.</code>
+    * 서드 파티 컴포넌트와의 호환을 위한 인터페이스 제공
+
+==== Quartz ====
+
+  * [[http://www.quartz-scheduler.org|link]]
+  * 일정 조건에 특정 Job을 수행할 수 있음
+  * 여러개의 job listener(worker)를 둘 수 있음
+  * job 수행 결과를 success/fail로 보여줌
+  * 특정 job을 따로 저장해 두었다가 추후에 꺼내서 수행할 수 있음
+    * job을 휘발성인 Ram에 저장할지 비휘발성인 JDBC에 저장할지 선택가능
+    * job 수행중 fault가 발생했을때 job 수행에 대한 보증을 위한것으로 보임
+  * Fail-over, Load balancing 클러스터링 지원 기능 제공
+  * 플러그인 지원, 자체에서 지원하는 플러그인 가짓수가 많다고 함
+
+==== schedulix ====
+
+  * [[http://www.schedulix.org/en|link]]
+  * [[https://youtu.be/Ea0XSfFHNqs|소개 동영상]]
+  * job 완료시 반환하는 code를 user가 정의할 수 있음
+  * 조건에 따라 loop를 돌리거나 branch를 뜰수 있음
+  * job의 수행 단계를 계층적으로 정의할 수 있음
+    * 계층이 높은 job부터 낮은 계층 job 순서로 진행
+    * job을 의존성을 줄 수 있음
+  * job에 전달하는 매개변수를 변수로 지정할 수 있음
+  * job의 병렬 처리 가능
+  * 모든 descriptor가 directory 구조로 저장됨
+  * 로드 밸런싱 가능
+  * job에 우선순위 줄 수 있음
+  * 두개 이상의 job 사이에 자원 공유 가능
+    * 자원에 대한 lock을 지원
+  * job을 실행하는데 있어서 인증 기능을 제공
+    * 잠겨진 job에 대한 실행 권한을 얻기 위해서는 로그인 필요
+  * 일정한 시간에 job 실행 가능(time scheduling)
+  * Web 인터페이스 제공
+  * OpenSource
+
+==== CA's workload automation ====
+
+  * [[http://www.ca.com/us/products/workload-automation.html|link]]
+  * 유료, 엄청 비쌈..
+  * perl 인터페이스용 라이브러리가 있음(([[http://search.cpan.org/~dougw/CA-WAAE-0.03/lib/CA/WAAE.pm|CA::WAAE]]))
+
+----
+
+==== beanstalkd ====
+
+  * [[http://kr.github.io/beanstalkd/|link]]
+  * 사용법이 간단
+  * backend database가 없음
+  * 비동기적으로 job을 수행함
+  * 여러 언어를 지원함
+  * job을 수행하는 worker가 무작위로 선택됨
+
+==== Celery ====
+
+  * [[https://github.com/celery/celery|link]]
+  * machine과 thread 간 job 분배를 위한 job queue
+  * broker를 통한 message 전송 기반
+  * worker에 job을 수행할 함수를 정의하고 client에서 message를 보내 worker의 해당 함수를 호출하는 구조
+  * worker와 client의 연결이 끊겼을때 연결을 다시 시도하고 재연결이 성공하면 message를 다시 전송
+  * latency가 적음
+
+==== DisQue ====
+
+  * [[https://github.com/antirez/disque|link]]
+  * 사실상 message queue... -> skip!
+
+
+==== huey ====
+
+  * [[https://huey.readthedocs.io/en/latest/|link]]
+  * tasklet 관리 툴의 python version인 greenlet을 기반으로 함
+  * 다중 처리가 가능
+  * job에 delay와 timeout을 줄 수 있음
+  * job을 주기적으로 호출할 수 있음
+  * job이 실패했을 때 자동으로 재시도할 수 있음
+  * job 수행 결과가 저장됨
+
+==== kue ====
+
+  * [[https://github.com/Automattic/kue|link]]
+  * Delayed jobs
+  * Distribution of parallel work load
+  * Job event and progress pubsub
+  * Job TTL
+  * Optional retries with backoff
+  * Graceful workers shutdown
+  * Full-text search capabilities
+  * RESTful JSON API
+  * Rich integrated UI
+  * Infinite scrolling
+  * UI progress indication
+  * Job specific logging
+  * Powered by Redis
+
+
+----
+
+
+===== Job Scheduling Perl Library 물색 =====
+
+  * AnyCloud 작업 관리 프레임워크 개발에 활용할 수 있는 library를 물색
+  * AnyCloud의 관리자((gms))가 perl 언어로 구성되어 있기 때문에 perl과의 호환성이 중요함
+
+==== library 요구사항 ====
+
+  * AnyCloud의 작업 관리 프레임워크에 활용하기 위해서 Job Scheduling perl library가 만족해야 하는 특징
+    - 각 작업에 타임아웃을 줄 수 있어야 함
+    - 작업 실행시 매개변수 전달이 가능해야 함
+    - 작업이 실패했을때 취하는 조치를 개발자가 지정할 수 있어야 함
+    - 작업의 수행결과를 개발자가 볼 수 있어야 함
+    - 작업들을 동기/순차적으로 실행해야 함
+    - 백앤드 DB가 없어야 함
+
+==== library 희망사항 ====
+
+  * AnyCloud의 작업 관리 프레임워크에 활용하기 위해서 Job Scheduling perl library가 제공했으면 하는 특징
+  * 이 특징들은 반드시 지원할 필요는 없으나 지원하면 개발이 편리함(편의성 측면)
+    - 추가로 동작하는 daemon이 없어야 함
+    - 활용 복잡도가 낮아야 함
+    - 작업들은 서로의 의존성을 체크하고 알맞은 실행 순서로 조정할 수 있어야 함
+    - 여러 작업 사이의 데이터 공유 방안이 구비돼 있어야 함
+
+==== library 요구사항 지원표 ====
+
+|    ^요구1((각 작업에 타임아웃을 줄 수 있어야 함))^요구2((작업 실행시 매개변수 전달이 가능해야 함))^요구3((작업이 실패했을때 취하는 조치를 개발자가 지정할 수 있어야 함))^요구4((작업의 수행결과를 개발자가 볼 수 있어야 함))^요구5((작업들을 동기/순차적으로 실행해야 함))^요구6((백앤드 DB가 없어야 함))^희망1((추가로 동작하는 daemon이 없어야 함))^희망2((활용 복잡도가 낮아야 함))^희망3((작업들은 서로의 의존성을 체크하고 알맞은 실행 순서로 조정할 수 있어야 함))^희망4((여러 작업 사이의 데이터 공유 방안이 구비돼 있어야 함))^
+^Minion                |**Yes** |**Yes** |**    **|**Yes** |**Yes** |**No  **|    |No  |No  |    |
+^Gearman               |**    **|**Yes** |**Yes** |**Yes** |**Yes** |**Yes **|No  |Yes |No  |    |
+^<del>AnyEvent</del>   |**Yes** |**No**  |**    **|**    **|**No**  |**Yes **|Yes |Yes |No  |    |
+^//Qless//             |**yes **|**yes **|**yes **|**yes **|**yes **|**No  **|yes |yes |yes |No  |
+^<del>TheSchwartz</del>|**No  **|**Yes **|**No  **|**Yes **|**No  **|**No  **|No  |No  |No  |    |
+^Qudo                  |**No  **|**Yes **|**Yes **|**Yes **|**Yes **|**No  **|Yes |Yes |No  |No  |
+
+----
+
+===== Job Scheduling Perl Library 상세 조사 내용 =====
+
+==== Minion ====
+
+  * [[http://mojolicious.org/perldoc/Minion|library link]]
+  * Mojolicious((real-time web framework)) 를 위한 job queue((그렇다고 해서 Mojolicious와 긴밀하게 연관되어 있진 않다))
+  * Mojolicious를 사용하여 현재 AnyCloud에 적합할 듯
+  * 여러 개의 queue, 우선순위, 작업 의존성, 작업 결과, 재시도, 통계, 분산 처리, 원격 제어 등을 지원
+  * 작업을 백그라운드로 구동하는 것도 가능
+  * 복잡도가 높음
+  * 백엔드 DB로 Postgres DB를 사용해야 함
+
+==== Gearman ====
+
+  * [[http://gearman.org/|link]]
+  * Gearman 전체 구조
+    * {{http://gearman.org/img/stack.png|Gearman architecture}}
+  * 작동법
+    * 클라이언트
+      * <code php>
+// Reverse Client Code
+$client = new GearmanClient();
+$client->addServer();
+print $client->do("reverse", "Hello World!");
+</code>
+    * 서버
+      * <code php>
+// Reverse Worker Code
+$worker = new GearmanWorker();
+$worker->addServer();
+$worker->addFunction("reverse", function ($job) {
+  return strrev($job->workload());
+});
+while ($worker->work());
+</code>
+    * 위와 같이 설정했을때 아래와 같이 작동함
+      * {{http://gearman.org/img/flow.png}}
+  * [[http://search.cpan.org/search?m=all&q=gearman&s=1|Gearman의 perl library]]
+  * [[http://advent.perl.kr/2012/2012-12-15.html|Gearman 관련 기사(한글)]]
+  * Gearman 적용시 Gearman server Daemon((gearmand))이 몇개 더 돌아야하고 각 workload별로 하나의 프로세스를 먹게 되어 관리 요소가 늘어나고 구조가 복잡해질 가능성이 있음
+  * workload의 병렬처리가 필요할 때 쓰는 용도가 적합할 듯 보임
+
+
+==== AnyEvent ====
+
+  * [[http://search.cpan.org/~mlehmann/AnyEvent-7.12/lib/AnyEvent/Intro.pod|AnyEvent_intro]]
+  * [[http://search.cpan.org/~mlehmann/AnyEvent-7.13/lib/AnyEvent.pm|AnyEvent_lib]]
+  * a framework to do event-based programming((여기서 이벤트란 사건이 아니고, 메시지를 뜻하는 듯))
+  * asynchronous!! 쓰기가 어렵지 않을까..
+  * API가 메시지 처리에 특화돼 있음 -> 활용하기 쉽지 않을듯
+
+==== Qless ====
+
+  * [[https://metacpan.org/pod/Qless|library link]]
+  * 구조
+    * redis라는 in-memory Database를 backend로 사용
+    * 여러 worker가 존재하며 worker가 큐에 존재하는 job을 하나씩 불러와 처리하는 형태
+    * 한 worker는 한번에 하나의 job만을 수행함
+    * 큐에 들어간 job들은 들어간 순서대로 하나씩 순서대로 수행됨
+  * 운용상의 특징
+    * 어떤 job을 수행하다가 worker가 제한 시간내로 작업을 끝내지 못하거나 연결이 끊겼을때는 다른 worker가 해당 job을 대신 수행함((retry 횟수를 설정할 수 있음))
+    * 특정 job에 tag를 붙여놓으면 해당 job의 상태 변화 추적이 가능함
+    * 큐에 있는 job은 순서대로 실행되기 때문에 뒤쪽에 위치한 job은 앞쪽에 위치한 job에 의존성을 갖음
+    * job을 수행하는데 걸리는 시간에 대한 통계와 설정한 시간 내에 실행된 job들의 정보를 제공함
+    * job에 우선순위를 줄 수 있음. 우선순위가 높은 job은 큐에 늦게 들어가더라도 빨리 수행될 수 있음
+    * job에 retry 횟수를 설정하면 job이 실패했을때 해당 job을 설정한 횟수만큼 다시 수행함
+    * 큐에 들어간 job이 일정시간동안 실행되지 않으면 버리도록 설정할 수 있음
+    * 특정 job을 주기적으로 수행하도록 설정하여 큐에 추가할 수 있음
+
+==== TheSchwartz ====
+
+  * [[https://metacpan.org/pod/TheSchwartz|library link]]
+  * 구조
+    * dsn((database의 타겟을 나타내는 표준 ex) "DBI:mysql:database=$database;host=$hostname;port=$port"))(([[https://en.wikipedia.org/wiki/Data_source_name|dsn 관련 위키]]))으로 backend Database를 지정할 수 있음
+      * 필요하다면 특정 DBI Driver를 활용하여 연결 가능
+    * 수행할 수 있는 job이 지정된 worker를 생성
+    * 어떤 job을 큐에 넣었을 때 해당 job을 수행할 수 있는 worker를 불러서 시키는 형태
+      * <del>일명 직업소개소 알고리즘?!</del>
+      * 예를들어 밭을 가는 일을 할 수 있는 일꾼((worker)) "김밭갈"과 밭을 갈고 씨를 뿌리는 일을 할 수 있는 일꾼 "씨뿔뿔", 그리고 밭에 물주는 일만 할 수 있는 일꾼 "박물주"가 있고 각 일꾼을 필요할 때마다 불러서 할당된 일을 시키는 방식이다. 이 상황에서는 김밭갈과 씨뿔뿔을 먼저 불러서 밭을 먼저 갈고 씨뿔뿔에게 밭에 씨를 뿌리는 일을 마저 시킨다음, 박물주를 주기적으로 불러서 밭에 물을 일정한 간격으로 주는 방식으로 밭을 구축하고 운영할 수 있을 것이다.
+  * 운용상의 특징
+    * backend database와 client의 연결이 끊기면 일정 주기로 연결을 다시 시도함
+    * 실패한 job은 다시 큐로 들어감
+    * 몇몇 worker를 한 그룹으로 묶어 협업하도록 할 수 있음
+    * 특정 job을 큐에 넣었을때 어떤 worker가 해당 job을 수행할지는 무작위로 결정됨
+    * 각 worker에 우선 순위를 줄수 있음
+    * 큐에 들어있는 job을 원하는 정보로 찾아서 list 형태로 조회할 수 있음
+    * worker에게 다양한 형태로 작업을 시킬수 있음
+      * work_once: backend DB에서 worker가 할 수 있는 일을 하나만 찾아서 수행한다
+      * work_until_done: backend DB에서 worker가 할 수 있는 일을 모두 찾아서 수행한다
+      * work: backend DB에서 worker가 할 수 있는 일이 있으면 수행하고 일이 남아있지 않으면 backend DB를 일정 주기로 할 수 있는 일이 없는지 계속 감시한다
+      * work_on: backend DB에서 worker가 할 수 있는 일을 하고 return 값을 알려준다((work 처럼 동작하는지 work_once 처럼 동작하는지는 미지수))
+      * grab_and_work_on: backend DB에서 worker가 할 수 있는 일이 없으면 false를 리턴하고 할 수 있는 일이 있으면 그 일을 수행하고 return 값을 알려준다
+
+==== Qudo ====
+
+  * [[https://metacpan.org/pod/Qudo|library link]]
+  * 구조
+    * dsn으로 backend database를 지정할 수 있음
+    * job을 큐에 넣고 worker가 큐에 있는 job 중 할 수 있는 것을 차레로 가져와서 수행함
+  * 운용상 특징
+    * backend database 연결이 끊기면 일정 주기로 연결을 다시 시도(default: 30초)
+    * worker가 처리할 수 있는 job을 지정해야 함
+    * hook를 넣을 수 있음((문서에 방법이 확실히 나와있지 않음. 확인 필요, 복잡..))(( [[http://lotus.perl.kr/2012/09.html|참조]]))

@@ -1,0 +1,190 @@
+====== Mediator 패턴 ======
+===== 문서 개요 =====
+
+  * 디자인 패턴(design pattern)의 구조적 패턴에 속하는 Mediator 패턴에 대한 개념을 정리한 문서
+  * Mediator 패턴의 특징, 용례 등을 정리한 문서
+
+-----
+
+===== Mediator 패턴의 정의 =====
+
+  * an additional level of indirection
+  * encapsulates all interconnections
+  * acts as the hub of communication
+  * be responsible for controlling and coordinating the interactions of its clients
+  * promote loose coupling by keeping objects from referring to each other explicitly
+  * promote a "many-to-many relationship network" to "full object status"
+  * {{:wiki:design_pattern:mediator:electric_adpater.gif?nolink|}}
+
+
+===== Mediator 패턴이 유용한 상황 =====
+
+  * 서로 관련된 객체 사이의 복잡한 통신과 제어를 한곳으로 집중시킬때 유용
+  * make many mappings to be easily maintained and manipulated simultaneously
+  * make the mapping abstraction to be easily extended in the future by defining derived classes
+
+
+===== Mediator 패턴의 구조 =====
+
+{{:wiki:design_pattern:mediator:mediator_structure.jpg?nolink|}}
+
+===== Mediator 패턴 작성 단계 =====
+
+  - Identify a collection of interacting objects that would benefit from mutual decoupling.
+  - Encapsulate those interactions in the abstraction of a new class.
+  - Create an instance of that new class and rework all "peer" objects to interact with the Mediator only.
+  - Balance the principle of decoupling with the principle of distributing responsibility evenly.
+  - Be careful not to create a "controller" or "god" object.
+
+
+===== Mediator 패턴의 예시 =====
+
+==== CPP ====
+
+<code cpp>
+#include <iostream>
+#include <string>
+#include <queue>
+using namespace std;
+
+/*
+    an additional level of indirection.
+    encapsulates all interconnections, acts as the hub of communication
+*/
+
+class Item{
+private:
+    Item** possessed;
+    int max = 10;
+    int items = 0;
+    string item_name;
+public:
+    Item(string name){
+        item_name = name;
+        possessed = new Item*[max];
+    }
+    ~Item(){
+        delete [] possessed;
+    }
+    string what(){
+        return item_name;
+    }
+    void add(Item* new_item){
+        if(items > max){ return; }
+        possessed[items] = new_item;
+        items++;
+    }
+    Item** get_possesed(){
+        return possessed;
+    }
+    int get_max_item(){ return max; }
+};
+
+class Mediator{
+private:
+    Item** group;
+    int groups = 0;
+    int max_group = 5;
+public:
+    Mediator(){
+        group = new Item*[max_group];
+    }
+    ~Mediator(){
+        delete [] group;
+    }
+    Item* get_group_by_name(string target){
+        for(int idx=0;idx<groups;idx++){
+            if(target == group[idx]->what()){ return group[idx]; }
+        }
+        return 0;
+    }
+    void add_a_to_b(class Item* a, class Item* b){
+        if(!get_group_by_name(b->what())){
+            group[groups]=b;
+            groups++;
+        }
+
+        b->add(a);
+    }
+    void print_all_groups(){
+        cout << "There are below groups" << endl;
+        for(int i=0;i<5;i++){
+            if(group[i] != 0){
+                cout << group[i]->what() << endl;
+            }
+        }
+    }
+    void say_possessed(string target){
+        cout << "\"" << target << "\" has below items" << endl;
+        Item* target_group = get_group_by_name(target);
+        if(target_group == 0){ cout << target << " is not exist group" << endl; }
+
+        Item** target_possessed = target_group->get_possesed();
+        queue<Item*> sub_groups;
+        for(int idx=0;target_possessed[idx]!=0;idx++){
+            string target_item_name = target_possessed[idx]->what();
+            cout << target_item_name << endl;
+            Item* sub_cand = get_group_by_name(target_item_name);
+            if(sub_cand != 0){
+                sub_groups.push(sub_cand);
+            }
+        }
+        cout << endl;
+
+        while(!sub_groups.empty()){
+            string group_to_say = ((Item*)sub_groups.front())->what();
+            cout << "\"" << group_to_say << "\" is sub group of \"" << target << "\"" << endl;
+            say_possessed(group_to_say);
+            sub_groups.pop();
+        }
+    }
+};
+
+int main(int argc, char** argv)
+{
+    Mediator my_med;
+    Item aaa("aaa");
+    Item bbb("bbb");
+    Item ccc("ccc");
+    Item ddd("ddd");
+    Item eee("eee");
+    Item fff("fff");
+    Item ggg("ggg");
+
+    my_med.add_a_to_b(&aaa,&ggg);
+    my_med.add_a_to_b(&bbb,&fff);
+    my_med.add_a_to_b(&ccc,&aaa);
+    my_med.add_a_to_b(&ddd,&ggg);
+    my_med.add_a_to_b(&eee,&aaa);
+    my_med.add_a_to_b(&fff,&ggg);
+
+    my_med.print_all_groups();
+    cout << endl;
+    my_med.say_possessed("ggg");
+
+    return 0;
+}
+
+/* result
+There are below groups
+ggg
+fff
+aaa
+
+"ggg" has below items
+aaa
+ddd
+fff
+
+"aaa" is sub group of "ggg"
+"aaa" has below items
+ccc
+eee
+
+"fff" is sub group of "ggg"
+"fff" has below items
+bbb
+
+*/
+</code>
+

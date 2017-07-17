@@ -1,0 +1,103 @@
+====== Adapter 패턴 ======
+===== 문서 개요 =====
+
+  * 디자인 패턴(design pattern)의 구조적 패턴에 속하는 Adapter 패턴에 대한 개념을 정리한 문서
+  * Adapter 패턴의 특징, 용례 등을 정리한 문서
+
+-----
+
+===== Adapter 패턴의 정의 =====
+
+  * wrap a legacy object that provides an incompatible interface with an object that supports the desired interface
+  * impedance matching
+  * 서로 다른 두 인터페이스를 융합하여 쓸 수 있도록 함
+  * 인터페이스의 교체를 용이하게 함
+  * adapter는 warpper 라고도 함
+  * 한 인터페이스를 다른 인터페이스로 변환
+  * Adapter is about creating an intermediary abstraction that translates, or maps, the old component to the new system
+  * {{:wiki:design_pattern:adapter:electric_adpater.gif?nolink|}}
+
+===== Adapter 패턴이 유용한 상황 =====
+
+  * An "off the shelf" component offers compelling functionality that you would like to reuse, but its "view of the world" is not compatible with the philosophy and architecture of the system currently being developed.
+
+
+===== Adapter 패턴의 구조 =====
+
+{{:wiki:design_pattern:adapter:adapter_structure.jpg?nolink|}}
+
+===== Adapter 패턴 작성 단계 =====
+
+  - Identify the players: the component(s) that want to be accommodated (i.e. the client), and the component that needs to adapt (i.e. the adaptee).
+  - Identify the interface that the client requires.
+  - Design a "wrapper" class that can "impedance match" the adaptee to the client.
+  - The adapter/wrapper class "has a" instance of the adaptee class.
+  - The adapter/wrapper class "maps" the client interface to the adaptee interface.
+  - The client uses (is coupled to) the new interface
+
+
+===== Adapter 패턴의 예시 =====
+
+==== CPP ====
+
+<code cpp>
+#include "iostream"
+#include <stdlib.h>
+using namespace std;
+
+/*
+   Adapter is about creating an intermediary abstraction 
+   that translates, or maps, the old component to the new system
+*/
+
+class MyAdaptee{
+public:
+    void do_something(int ten_volt){
+        cout << "The output voltage is " << ten_volt << endl;
+    }
+};
+
+class Interface{
+public:
+    virtual void do_something_with_adaptee(int) = 0;
+};
+
+class MyAdapter:public Interface{
+private:
+    MyAdaptee worker;
+
+public:
+    void do_something_with_adaptee(int thirty_volt){
+        worker.do_something(thirty_volt/3);
+    }
+};
+
+
+int main(int argc, char** argv)
+{
+    int input_volt = 30;
+    if(argc > 1){ input_volt = atoi(argv[1]); }
+
+    MyAdapter my_adapter;
+    my_adapter.do_something_with_adaptee(input_volt);
+    return 1;
+}
+
+</code>
+
+==== PHP ====
+
+<code php>
+<?php
+class Account()
+{
+    public function NewAccount( //inputs )
+    {
+        $user = new User();
+        $user->CreateOrUpdate( //subset of inputs );
+         
+        $profile = new Profile();
+        $profile->CreateOrUpdate( //subset of inputs );
+    }
+}
+</code>
