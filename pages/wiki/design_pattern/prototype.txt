@@ -1,0 +1,135 @@
+====== Prototype 패턴 ======
+===== 문서 개요 =====
+
+  * 디자인 패턴(design pattern)의 구조적 패턴에 속하는 Prototype 패턴에 대한 개념을 정리한 문서
+  * Prototype 패턴의 특징, 용례 등을 정리한 문서
+
+-----
+
+===== Prototype 패턴의 정의 =====
+
+  * 샘플 클래스를 만들어 두고 필요할 때 복사하여 사용
+  * Encapsulate use of the "new" operator behind the method signature "clone" ... clients will delegate to a Prototype object when new instances are required
+  * Declare an abstract base class that specifies a pure virtual "clone" method
+  * Declare an abstract base class that maintains a dictionary of all "cloneable" concrete derived classes
+  * Derives itself from the abstract base class, registers its prototypical instance, and implements the clone() operation.
+  * The client then calls a "clone" operation on the abstract base class, supplying a string or enumerated data type that designates the particular concrete derived class desired.((The client then, instead of writing code that invokes the "new" operator on a hard-wired class name, calls a "clone" operation on the abstract base class, supplying a string or enumerated data type that designates the particular concrete derived class desired.))
+  * {{:wiki:design_pattern:prototype:electric_adpater.gif?nolink|}}
+
+===== Prototype 패턴이 유용한 상황 =====
+
+  * 어떤 클래스의 인스턴스를 만드는 것이 자원/시간을 많이 잡아먹거나 복잡한 경우에 유용
+
+===== Prototype 패턴의 구조 =====
+
+{{:wiki:design_pattern:prototype:prototype_structure.jpg?nolink|}}
+
+===== Prototype 패턴 작성 단계 =====
+
+  - Add a clone() method to the existing "product" hierarchy.
+  - Design a "registry" that maintains a cache of prototypical objects. The registry could be encapsulated in a new Factory class, or in the base class of the "product" hierarchy.
+  - Design a factory method that: may (or may not) accept arguments, finds the correct prototype object, calls clone() on that object, and returns the result.
+  - The client replaces all references to the new operator with calls to the factory method.
+
+===== Prototype 패턴의 예시 =====
+
+==== CPP ====
+
+<code cpp>
+#include <iostream>
+#include <cstdlib>
+#include <ctime>
+
+using namespace std;
+
+/*
+   Encapsulate use of the "new" operator behind the method signature "clone" ...
+   clients will delegate to a Prototype object when new instances are required
+*/
+
+class Weapon
+{
+public:
+    virtual Weapon* clone() = 0;
+    virtual void use() = 0;
+    virtual string get_name() = 0;
+};
+
+class Amory
+{
+private:
+    static Weapon* capablity[5];
+public:
+    static Weapon* pull(int select);
+};
+
+class Pistol:public Weapon
+{
+public:
+    Weapon* clone(){ return new Pistol(); }
+    void use(){ cout << "ppang!!" << endl; }
+    string get_name(){ return "Pistol"; }
+};
+
+class LaserGun:public Weapon
+{
+public:
+    Weapon* clone(){ return new LaserGun(); }
+    void use(){ cout << "pi-yong~~" << endl; }
+    string get_name(){ return "LaserGun"; }
+};
+
+class Club:public Weapon
+{
+    Weapon* clone(){ return new Club(); }
+    void use(){ cout << "puck!" << endl; }
+    string get_name(){ return "Club"; }
+};
+
+class Knife:public Weapon
+{
+    Weapon* clone(){ return new Knife(); }
+    void use(){ cout << "pushook" << endl; }
+    string get_name(){ return "Knife"; }
+};
+
+Weapon* Amory::capablity[] =
+    {0, new Pistol(), new LaserGun(), new Club(), new Knife() };
+Weapon* Amory::pull(int select){
+    if(select == 0){
+        cout << "You can't pull any item" << endl;
+        return 0;
+    }
+
+    Weapon* item = capablity[select]->clone();
+    cout << item->get_name() << " is pulled" << endl;
+    cout << "You use the item!" << endl;
+    item->use();
+    return item;
+};
+
+int main(int argc, char** argv)
+{
+    cout << "You try to pull some item in amory" << endl;
+    srand(time(NULL));
+    Amory::pull(rand() % 5);
+    return 1;
+}
+
+
+/* result(Ex.1)
+You try to pull some item in amory
+LaserGun is pulled
+You use the item!
+pi-yong~~
+
+*/
+
+/* result(Ex.2)
+You try to pull some item in amory
+You can't pull any item
+
+*/
+
+</code>
+

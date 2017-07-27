@@ -1,0 +1,46 @@
+====== TemplateMethod 패턴 ======
+===== 문서 개요 =====
+
+  * 디자인 패턴(design pattern)의 구조적 패턴에 속하는 TemplateMethod 패턴에 대한 개념을 정리한 문서
+  * TemplateMethod 패턴의 특징, 용례 등을 정리한 문서
+
+-----
+
+===== TemplateMethod 패턴의 정의 =====
+
+  * define the "outline" of an algorithm in a base class
+  * common implementation is staged in the base class, peculiar implementation is represented by "place holders" in the base class and then implemented in derived classes
+  * __알고리즘의 개별 단계를 구현하는 방법을 서브클래스에서 결정하는 패턴__
+  * 메서드 속 알고리즘의 골격만을 정의, 구체적인 알고리즘은 서브 클래스에서 구현
+  * 알고리즘의 구조는 그대로 유지하면서 서브클래스에서 특정 루틴을 재정의 할 수 있음
+  * The invariant steps are implemented in an abstract base class, while the variant steps are either given a default implementation, or no implementation at all
+  * The variant steps represent "hooks", or "placeholders", that can, or must, be supplied by the component's client in a concrete derived class
+  * Each framework implements the invariant pieces of a domain's architecture, and defines "placeholders" for all necessary or interesting client customization options
+
+===== TemplateMethod 패턴이 유용한 상황 =====
+
+  * be used prominently in frameworks
+  * 변하지 않는 부분에 일부를 다양화 해야할 때(Framwork)
+
+===== TemplateMethod 패턴의 구조 =====
+
+{{:wiki:design_pattern:template_method:template_method_structure.jpg?nolink|}}
+
+===== TemplateMethod 패턴 작성 단계 =====
+
+  - Examine the algorithm, and decide which steps are standard and which steps are peculiar to each of the current classes.
+  - Define a new abstract base class to host the "don't call us, we'll call you" framework.
+  - Move the shell of the algorithm (now called the "template method") and the definition of all standard steps to the new base class.
+  - Define a placeholder or "hook" method in the base class for each step that requires many different implementations. This method can host a default implementation – or – it can be defined as abstract (Java) or pure virtual (C++).
+  - Invoke the hook method(s) from the template method.
+  - Each of the existing classes declares an "is-a" relationship to the new abstract base class.
+  - Remove from the existing classes all the implementation details that have been moved to the base class.
+  - The only details that will remain in the existing classes will be the implementation details peculiar to each derived class.
+
+===== TemplateMethod 패턴의 예시 =====
+
+==== CPP ====
+
+<code cpp>
+</code>
+

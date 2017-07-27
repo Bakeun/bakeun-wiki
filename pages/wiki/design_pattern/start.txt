@@ -24,8 +24,12 @@
 
   * 코드에서 달라지는 부분을 찾아내고 달라지지 않는 부분과 분리한다.
   * 구현이 아닌 인터페이스에 맞춰서 프로그래밍한다.
+    * 이렇게 하면 같은 인터페이스를 가지고 구현한 클래스는 어떤 것이라도 한 프로그램에서 처리할 수 있게된다.
   * 상속보다는 구성을 활용한다.
-  * 서로 상호작용을 하는 객체 사이에서는 가능하면 느슨하게 결합하는 디자인을 사용한다.
+  * 서로 상호작용을 하는 객체 사이에서는 가능하면 느슨하게 결합하는 디자인을 사용한다.(디커플링)
+    * 작업을 위해 이해해야 하는 코드의 범위가 줄어든다.
+    * 특정 부분 코드의 변경이 전체에 미치는 영향이 작아진다.
+    * 새로운 요구 사항을 충족하기 위해 변경해야 하는 범위를 좁힌다.
   * 클래스는 확장에 대해서는 열려있어야 하지만 코드 변경에 대해서는 닫혀 있어야한다.(OCP)
   * 추상화된 것에 의존하도록 만들어라. 구상클래스에 의존하도록 만들지 말아야 한다.
   * 코딩은 명확하고 단순해야 한다.
@@ -40,7 +44,10 @@
   * Lacks formal foundations
   * Leads to inefficient solutions
   * Does not differ significantly from other abstractions
-
+  * 보조 코드들 때문에 실제 작업 코드를 찾기가 어려워 질 수 있다.
+    * 프로그램 논리를 최대한 단순하게 할 필요가 있다.
+  * 프로그램의 속도를 느리게 한다.
+    * 이런 저런 시도와 실험((프로토타이핑))이 필요한 초기 단계에서는 디자인 패턴을 최대한 유연하게 구조를 잡고 기획이 확실해지고 프로그램의 구체적인 동작 방식이 정착이 되면 디자인 패턴을 들어내어 성능을 최적화 하는 타협안도 있다.
 ===== 디자인 패턴의 분류 =====
 
 ==== 미분류 ====
@@ -52,7 +59,7 @@
 ==== 구조적(Structural) 패턴 ====
 
   * 구성 요소들 사이 융합을 위해의 그들의 관계를 조율함
-  * **[[wiki:design_pattern:adapter|Adapter 패턴]]**
+  * **[[wiki:design_pattern:prototype|Prototype 패턴]]**
   * **[[wiki:design_pattern:facade|Facade 패턴]]**
   * **[[wiki:design_pattern:proxy|Proxy 패턴]]**
   * **[[wiki:design_pattern:decorator|Decorator 패턴]]**
@@ -99,14 +106,9 @@ class Session
 $session = Session::getInstance();
 </code>
 
-  * ** AbstractFactory 패턴**
-    * 클라이언트에서 구상 클래스를 지정하지 않으면서도 객체를 생성할 수 있도록 하는 패턴
-    * 인터페이스를 이용하여 서로 연관된, 또는 의존하는 객체를 구상 클래스를 지정하지 않고 생성한다
-    * 구상 클래스는 서브 클래스에 의해 만들어짐
+  * **[[wiki:design_pattern:abstract_factory|AbstractFactory 패턴]]**
   * **[[wiki:design_pattern:builder|Builder 패턴]]**
-  * **Protoytype 패턴**
-    * 어떤 클래스의 인스턴스를 만드는 것이 자원/시간을 많이 잡아먹거나 복잡한 경우에 유용
-    * 샘플 클래스를 만들어 두고 필요할 때 복사하여 사용
+  * **[[wiki:design_pattern:prototype|Prototype 패턴]]**
 
 ==== Behavioral 패턴 ====
 
@@ -114,10 +116,7 @@ $session = Session::getInstance();
   * **[[wiki:design_pattern:strategy|Strategy 패턴]]**
   * **[[wiki:design_pattern:observer|Observer 패턴]]**
   * **[[wiki:design_pattern:command|Command 패턴]]**
-  * **Template method 패턴**
-    * __알고리즘의 개별 단계를 구현하는 방법을 서브클래스에서 결정하는 패턴__
-    * 메서드 속 알고리즘의 골격만을 정의, 구체적인 알고리즘은 서브 클래스에서 구현
-    * 알고리즘의 구조는 그대로 유지하면서 서브클래스에서 특정 루틴을 재정의 할 수 있음
+  * **[[wiki:design_pattern:template_method|Template method 패턴]]**
   * **[[wiki:design_pattern:iterator|Iterator 패턴]]**
   * **[[wiki:design_pattern:state|State 패턴]]**
   * **[[wiki:design_pattern:interpreter|Interpreter 패턴]]**
@@ -125,5 +124,4 @@ $session = Session::getInstance();
   * **[[wiki:design_pattern:memento|Memento 패턴]]**
   * **[[wiki:design_pattern:visitor|Visitor 패턴]]**
   * **[[wiki:design_pattern:chain_of_responsibility|Chain of Responsibility 패턴]]**
-  * **Iterpreter 패턴**
-    * A way to include language elements in a program
+  * **[[wiki:design_pattern:interpreter|Interpreter 패턴]]**

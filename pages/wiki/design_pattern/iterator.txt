@@ -8,6 +8,7 @@
 
 ===== Iterator 패턴의 정의 =====
 
+  * 컬랙션 내에 있는 모든 객체에 대해 반복 작업을 처리하는 패턴
   * encapsulate the traversal of collection classes behind the interface "first..next..isDone"
   * providing a uniform interface for traversing many types of aggregate objects
   * take the responsibility for access and traversal out of the aggregate object and put it into an Iterator object that defines a standard traversal protocol

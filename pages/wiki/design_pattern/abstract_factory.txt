@@ -1,0 +1,179 @@
+====== AbstractFactory 패턴 ======
+===== 문서 개요 =====
+
+  * 디자인 패턴(design pattern)의 구조적 패턴에 속하는 AbstractFactory 패턴에 대한 개념을 정리한 문서
+  * AbstractFactory 패턴의 특징, 용례 등을 정리한 문서
+
+-----
+
+===== AbstractFactory 패턴의 정의 =====
+
+  * 클라이언트에서 구상 클래스를 지정하지 않으면서도 객체를 생성할 수 있도록 하는 패턴
+  * 인터페이스를 이용하여 서로 연관된, 또는 의존하는 객체를 구상 클래스를 지정하지 않고 생성한다
+  * 구상 클래스는 서브 클래스에 의해 만들어짐
+  * model "platform" (e.g. windowing system, operating system, database) with an inheritance hierarchy, and model each "product" (e.g. widgets, services, data structures) with its own hierarchy ... platform derived classes create and return instances of product derived classes
+  * Provide a level of indirection that abstracts the creation of families of related or dependent objects without directly specifying their concrete classes
+  * has the responsibility for providing creation services for the entire platform family
+  * Clients never create platform objects directly, they ask the factory to do that for them
+  * 
+
+===== AbstractFactory 패턴이 유용한 상황 =====
+
+  * makes exchanging product families easy
+
+===== AbstractFactory 패턴의 구조 =====
+
+  {{:wiki:design_pattern:abstract_factory:abstract_factory_structure.jpg?nolink|}}
+
+===== AbstractFactory 패턴 작성 단계 =====
+
+  - Decide if "platform independence" and creation services are the current source of pain.
+  - Map out a matrix of "platforms" versus "products".
+  - Define a factory interface that consists of a factory method per product.
+  - Define a factory derived class for each platform that encapsulates all references to the new operator.
+  - The client should retire all references to new, and use the factory methods to create the product objects.
+
+===== AbstractFactory 패턴의 예시 =====
+
+==== CPP ====
+
+<code cpp>
+#include "iostream"
+#include <stdlib.h>
+#include <string.h>
+using namespace std;
+
+#define CENTOS
+
+/*
+    model "platform" (e.g. windowing system, operating system, database) with an inheritance hierarchy,
+    and model each "product" (e.g. widgets, services, data structures) with its own hierarchy
+    ... platform derived classes create and return instances of product derived classes
+*/
+
+class Command
+{
+public:
+    virtual void execute(string) = 0;
+};
+
+class Distro
+{
+public:
+    virtual Command* network_restart() = 0;
+    virtual Command* check_version() = 0;
+    virtual Command* install_package() = 0;
+};
+
+
+
+class CentNetRestart:public Command
+{
+public:
+    void execute(string input){ cout << "service network restart" << endl; }
+};
+
+class CentChkVersion:public Command
+{
+public:
+    void execute(string input){ cout << "cat /etc/centos-release" << endl; }
+};
+
+class CentInstPackage:public Command
+{
+public:
+    void execute(string input){ cout << "yum install -y " << input << endl; }
+};
+
+class CentOS:public Distro
+{
+public:
+    Command* network_restart(){ return new CentNetRestart; }
+    Command* check_version(){ return new CentChkVersion; }
+    Command* install_package(){ return new CentInstPackage; }
+};
+
+
+
+class UbuntuNetRestart:public Command
+{
+public:
+    void execute(string input){ cout << "service networking restart" << endl; }
+};
+
+class UbuntuChkVersion:public Command
+{
+public:
+    void execute(string input){ cout << "cat /etc/os-release" << endl; }
+};
+
+class UbuntuInstPackage:public Command
+{
+public:
+    void execute(string input){ cout << "apt-get install -y " << input << endl; }
+};
+
+class UbuntuOS:public Distro
+{
+public:
+    Command* network_restart(){ return new UbuntuNetRestart; }
+    Command* check_version(){ return new UbuntuChkVersion; }
+    Command* install_package(){ return new UbuntuInstPackage; }
+};
+
+Distro* os;
+
+void network_restart(){ return os->network_restart()->execute(""); }
+void check_version(){ return os->check_version()->execute(""); }
+void install_package(string package){ return os->install_package()->execute(package); }
+
+int main(int argc, char** argv)
+{
+#ifdef CENTOS
+    os = new CentOS;
+#else
+    os = new UbuntuOS;
+#endif
+
+    cout << "Restart network" << endl;
+    network_restart();
+    cout << endl;
+
+    cout << "Check version" << endl;
+    check_version();
+    cout << endl;
+
+    cout << "Install samba" << endl;
+    install_package("samba");
+    cout << endl;
+
+    return 1;
+}
+
+
+/* result
+IF '#define CENTOS'
+Restart network
+service network restart
+
+Check version
+cat /etc/centos-release
+
+Install samba
+yum install -y samba
+
+
+IF "#define UbuntuOS" or "not defined"
+Restart network
+service networking restart
+
+Check version
+cat /etc/os-release
+
+Install samba
+apt-get install -y samba
+
+*/
+</code>
+
+

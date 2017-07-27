@@ -8,8 +8,8 @@
 
 ===== Interpreter 패턴의 정의 =====
 
-  * 컬랙션 내에 있는 모든 객체에 대해 반복 작업을 처리하는 패턴
   * map a domain to a language, the language to a recursive grammar, and the grammar to the Composite pattern
+  * A way to include language elements in a program
 
 ===== Interpreter 패턴이 유용한 상황 =====
 
